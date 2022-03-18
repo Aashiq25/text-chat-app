@@ -41,9 +41,11 @@ int main(int argc, char **argv)
 	cse4589_init_log(argv[2]);
 
 	/* Clear LOGFILE*/
-    fclose(fopen(LOGFILE, "w"));
+	fclose(fopen(LOGFILE, "w"));
 
 	/*Start Here*/
-	
+
+	cout << argv[0] << argv[1] << argv[2];
+
 	return 0;
 }
