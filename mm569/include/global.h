@@ -48,5 +48,8 @@ struct ClientMetaInfo
     }
 };
 
+struct MessageCount {
+    int received, sent;
+};
 
 #endif

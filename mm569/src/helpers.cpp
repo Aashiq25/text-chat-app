@@ -94,7 +94,6 @@ std::string FetchHostName(struct sockaddr_in& sa) {
     char service[20];
 
     getnameinfo((sockaddr *) &sa, sizeof(sa), host, sizeof(host), service, sizeof(service), 0);
-    std::cout<<"\nHost: "<<host;
     return std::string(host);
 }
 
@@ -117,7 +116,7 @@ char* SerializeConnectedClients(std::vector<ClientMetaInfo>& connected_clients) 
 bool SortByPortNumber(const ClientMetaInfo& a, const ClientMetaInfo& b) {
     int port_a = atoi(a.portNumber.c_str());
     int port_b = atoi(b.portNumber.c_str());
-    return port_a > port_b;
+    return port_a < port_b;
 }
 
 void PrintClientsList(std::vector<ClientMetaInfo>& clientsList, std::string cmd) {

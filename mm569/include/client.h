@@ -1,10 +1,24 @@
 #include<vector>
 #include "../include/global.h"
+class Client {
+    public:
 
-int connect_to_host(std::string server_ip, std::string server_port, std::string client_port, bool& isLoggedIn);
+        Client(int argc, char **argv);
 
-int initClient(int argc, char **argv);
+        int ConnectToHost(std::string server_ip, std::string server_port);
 
-void PrintClientPortNumber(std::string cmd, char* port);
+        int InitClient();
 
-void ParseAvailableClients(std::string msg, std::vector<ClientMetaInfo>& availableClients);
+        void PrintClientPortNumber(std::string cmd);
+
+        void ParseAvailableClients(std::string msg);
+
+        void SendMessage(std::string msg);
+
+        bool ClientExists(std::string& ipAddress);
+    private:
+        std::string client_port;
+        bool isLoggedIn;
+        int server;
+        std::vector<ClientMetaInfo> availableClients;
+};

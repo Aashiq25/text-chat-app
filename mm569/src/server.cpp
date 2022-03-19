@@ -31,8 +31,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include<iostream>
-
 #include <arpa/inet.h>
+#include <map>
 
 #include "../include/server.h"
 #include "../include/logger.h"
@@ -62,6 +62,8 @@ int initServer(char* port)
 	// Additional Data structures
 
 	std::vector<ClientMetaInfo> connected_clients;
+
+	std::map<std::string, MessageCount> countMap;
 
 	/* Set up hints structure */
 	memset(&hints, 0, sizeof(hints));
@@ -147,9 +149,9 @@ int initServer(char* port)
 						} else if (input_command == "PORT") {
 							PrintPortNumber(input_command, server_socket);
 						}
-						// else if (input_command == "LIST") {
-						// 	PrintClientsList();
-						// }
+						else if (input_command == "LIST") {
+							PrintClientsList(connected_clients, input_command);
+						}
 
 
 						free(cmd);
@@ -190,11 +192,25 @@ int initServer(char* port)
 						{
 							// Process incoming data from existing clients here ...
 
+							std::string client_cmd(buffer);
+							trim(client_cmd);
+
+							if (client_cmd == "REFRESH") {
+								char* serialized_data = SerializeConnectedClients(connected_clients);
+								if (send(sock_index, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data)) {
+									printf("\nSent updated list to client! %d\n", strlen(serialized_data));
+								}
+							} else if (client_cmd.substr(0, 5) == "LOGIN") {
+								char* serialized_data = SerializeConnectedClients(connected_clients);
+								if (send(sock_index, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data)) {
+									printf("Sent login list to client!\n");
+								}
+							}
+
 							printf("\nClient sent me: %s\n", buffer);
 							printf("ECHOing it back to the remote host ... ");
-							char* serialized_data = SerializeConnectedClients(connected_clients);
-							if (send(fdaccept, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
-								printf("Done!\n");
+							
+							
 							fflush(stdout);
 						}
 

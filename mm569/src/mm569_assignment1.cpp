@@ -1,6 +1,6 @@
 /**
  * @ubitname_assignment1
- * @author  Fullname <ubitname@buffalo.edu>
+ * @author  Muhamed Aashiq <mm569@buffalo.edu>
  * @version 1.0
  *
  * @section LICENSE
@@ -53,7 +53,8 @@ int main(int argc, char **argv)
 	if (strcmp(argv[1], "s") == 0) {
 		initServer(argv[2]);
 	} else if (strcmp(argv[1], "c") == 0) {
-		initClient(argc, argv);
+		Client* clientInstance = new Client(argc, argv);
+		clientInstance->InitClient();
 	}
 
 	return 0;

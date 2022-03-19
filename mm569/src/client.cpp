@@ -36,7 +36,7 @@
 
 #define TRUE 1
 #define MSG_SIZE 256
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 
 /**
  * main function
@@ -45,24 +45,28 @@
  * @param  argv The argument list
  * @return 0 EXIT_SUCCESS
  */
-int initClient(int argc, char **argv)
-{
 
-	std::string client_port(argv[2]);
-	bool isLoggedIn = false;
-	std::vector<ClientMetaInfo> availableClients;
+Client::Client(int argc, char **argv) {
+	client_port = std::string(argv[2]);
+	isLoggedIn = false;
+	server = -1;
+}
+
+int Client::InitClient()
+{
 	while (TRUE)
 	{
 		cse4589_print_and_log("[PA1-Client@CSE489/589]$ ");
-		fflush(stdout);
+		// fflush(stdout);
 
 		char *msg = (char *)malloc(sizeof(char) * MSG_SIZE);
 		memset(msg, '\0', MSG_SIZE);
 		if (fgets(msg, MSG_SIZE - 1, stdin) == NULL) // Mind the newline character that will be written to msg
 			exit(-1);
 
-		printf("I got: %s(size:%lu chars)", msg, strlen(msg));
-		int server = -1;
+		printf("I got: %s(size:%lu chars)\n", msg, strlen(msg));
+		
+		bool requestServer;
 		std::string input_command(msg);
 		trim(input_command);
 		if (input_command == "AUTHOR") {
@@ -70,37 +74,46 @@ int initClient(int argc, char **argv)
 		} else if (input_command == "IP") {
 			PrintIpAddress(input_command);
 		} else if (input_command == "PORT") {
-			PrintClientPortNumber(input_command, argv[2]);
+			PrintClientPortNumber(input_command);
 		} else if (input_command.substr(0, 5) == "LOGIN") {
 			std::size_t ip_seperator = input_command.find(" "), port_seperator;
 			port_seperator = input_command.find(" ", ip_seperator + 1);
   			std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
 			std::string server_port = input_command.substr(port_seperator + 1);
-			server = connect_to_host(server_ip, server_port, client_port, isLoggedIn);
+			server = ConnectToHost(server_ip, server_port);
+			requestServer = true;
 		}
 
-		if (server != -1 && send(server, msg, strlen(msg), 0) == strlen(msg))
+		if (isLoggedIn) {
+			if (input_command == "LIST") {
+				PrintClientsList(availableClients, input_command);
+			} else if (input_command == "REFRESH") {
+				requestServer = true;
+			} else if (input_command.substr(0, 4) == "SEND") {
+				SendMessage(std::string(input_command));
+			}
+		}
+		if (requestServer && server != -1 && send(server, msg, strlen(msg), 0) == strlen(msg)) {
 			printf("Done!\n");
-		fflush(stdout);
+		}
 
+		fflush(stdout);
 		/* Initialize buffer to receieve response */
 		char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 		memset(buffer, '\0', BUFFER_SIZE);
-
-		if (recv(server, buffer, BUFFER_SIZE, 0) >= 0)
+		if (requestServer && recv(server, buffer, BUFFER_SIZE, 0) != -1)
 		{
-
-			ParseAvailableClients(std::string(buffer), availableClients);
-
-
-
+			ParseAvailableClients(std::string(buffer));
 			printf("Server responded: %s", buffer);
+			requestServer = false;
 			fflush(stdout);
+		} else {
+			perror("Error occurred while receiving");
 		}
 	}
 }
 
-int connect_to_host(std::string server_ip, std::string server_port, std::string client_port, bool& isLoggedIn)
+int Client::ConnectToHost(std::string server_ip, std::string server_port)
 {
 	int fdsocket;
 	struct addrinfo hints, *server_addr, *client_addr;
@@ -138,13 +151,16 @@ int connect_to_host(std::string server_ip, std::string server_port, std::string 
 }
 
 
-void PrintClientPortNumber(std::string cmd, char* port) {
+void Client::PrintClientPortNumber(std::string cmd) {
 	cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
-	cse4589_print_and_log("PORT:%d\n", port);
+	cse4589_print_and_log("PORT:%d\n", client_port.c_str());
 }
 
 
-void ParseAvailableClients(std::string msg, std::vector<ClientMetaInfo>& availableClients) {
+void Client::ParseAvailableClients(std::string msg) {
+	if (msg.size() == 0) {
+		return;
+	}
 	availableClients.clear();
 	std::string connected_str = "Connected Clients:[";
     std::size_t startIndex = msg.find(connected_str);
@@ -168,4 +184,32 @@ void ParseAvailableClients(std::string msg, std::vector<ClientMetaInfo>& availab
 
         strSeperator1 = (strSeperator2 != -1 ? strSeperator2 + 1 : -1);
     }
+}
+
+
+void Client::SendMessage(std::string msg) {
+	std::string cmd = msg.substr(0, 4);
+    std::size_t ipStart = msg.find(" ") + 1;
+    std::size_t ipEnd = msg.find(" ", ipStart);
+    std::string ipAddress = msg.substr(ipStart + 1, ipEnd - ipStart - 1), message = msg.substr(ipEnd + 1);
+	bool didSend = false;
+	if (ClientExists(ipAddress)) {
+		if (server != -1 && send(server, msg.c_str(), msg.size(), 0) == msg.size()) {
+			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+			didSend = true;
+		}
+	}
+
+	PrintEndCommand(!didSend, msg);
+
+}
+
+bool Client::ClientExists(std::string& ipAddress) {
+	for (int i = 0; i < availableClients.size(); i++) {
+		ClientMetaInfo client = availableClients[i];
+		if (client.ipAddress == ipAddress) {
+			return true;
+		}
+	}
+	return false;
 }
