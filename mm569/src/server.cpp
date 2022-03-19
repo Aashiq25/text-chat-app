@@ -59,6 +59,10 @@ int initServer(char* port)
 	struct addrinfo hints, *res;
 	fd_set master_list, watch_list;
 
+	// Additional Data structures
+
+	std::vector<ClientMetaInfo> connected_clients;
+
 	/* Set up hints structure */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -143,6 +147,9 @@ int initServer(char* port)
 						} else if (input_command == "PORT") {
 							PrintPortNumber(input_command, server_socket);
 						}
+						// else if (input_command == "LIST") {
+						// 	PrintClientsList();
+						// }
 
 
 						free(cmd);
@@ -156,6 +163,8 @@ int initServer(char* port)
 							perror("Accept failed.");
 
 						printf("\nRemote Host connected!\n");
+						AddToConnectedList(client_addr, connected_clients);
+						
 
 						/* Add to watched socket list */
 						FD_SET(fdaccept, &master_list);
@@ -183,7 +192,8 @@ int initServer(char* port)
 
 							printf("\nClient sent me: %s\n", buffer);
 							printf("ECHOing it back to the remote host ... ");
-							if (send(fdaccept, buffer, strlen(buffer), 0) == strlen(buffer))
+							char* serialized_data = SerializeConnectedClients(connected_clients);
+							if (send(fdaccept, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
 								printf("Done!\n");
 							fflush(stdout);
 						}
@@ -196,4 +206,19 @@ int initServer(char* port)
 	}
 
 	return 0;
+}
+
+
+void AddToConnectedList(struct sockaddr_in& client_addr, std::vector<ClientMetaInfo>& connected_clients) {
+	ClientMetaInfo clientInfo;
+	char ipAddress[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(client_addr.sin_addr), ipAddress, INET_ADDRSTRLEN);
+	clientInfo.ipAddress = ipAddress;
+	clientInfo.hostName = FetchHostName(client_addr);
+	clientInfo.isLoggedIn = true;  
+	char str[100];
+	sprintf(str, "%d", ntohs(client_addr.sin_port));
+	std::string portNumberOfClient(str);
+	clientInfo.portNumber = portNumberOfClient;
+	connected_clients.push_back(clientInfo);
 }

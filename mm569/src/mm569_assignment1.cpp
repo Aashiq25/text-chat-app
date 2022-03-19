@@ -51,7 +51,6 @@ int main(int argc, char **argv)
 
 
 	if (strcmp(argv[1], "s") == 0) {
-		cout<<"Init server";
 		initServer(argv[2]);
 	} else if (strcmp(argv[1], "c") == 0) {
 		initClient(argc, argv);

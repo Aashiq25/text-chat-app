@@ -6,7 +6,8 @@
 #include <arpa/inet.h>
 #include<string>
 #include <stdio.h>
-
+#include<iostream>
+#include <algorithm>
 #include "../include/helpers.h"
 #include "../include/logger.h"
 
@@ -49,7 +50,15 @@ void PrintPortNumber(std::string cmd, int server_socket) {
 
 
 void PrintIpAddress(std::string cmd) {
-    bool didPrint = false;
+    std::string ipAddress = FetchMyIp();
+    cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+    cse4589_print_and_log("IP:%s\n", ipAddress.c_str());
+    
+    PrintEndCommand(false, cmd);
+
+}
+
+std::string FetchMyIp() {
     struct addrinfo *address_info;
     int sockfd;
     struct sockaddr_in google_address;
@@ -73,12 +82,52 @@ void PrintIpAddress(std::string cmd) {
         if (getsockname(sockfd, (struct sockaddr *)&sin, &len) != -1) {
             char ipAddress[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &sin.sin_addr, ipAddress, INET_ADDRSTRLEN);
-            cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
-            cse4589_print_and_log("IP:%s\n", ipAddress);
-            didPrint = true;
+            return std::string(ipAddress);
         }
     }
-    PrintEndCommand(!didPrint, cmd);
 
- 
+
+}
+
+std::string FetchHostName(struct sockaddr_in& sa) {
+    char host[1024];
+    char service[20];
+
+    getnameinfo((sockaddr *) &sa, sizeof(sa), host, sizeof(host), service, sizeof(service), 0);
+    std::cout<<"\nHost: "<<host;
+    return std::string(host);
+}
+
+
+char* SerializeConnectedClients(std::vector<ClientMetaInfo>& connected_clients) {
+    std::string serialized_str = "Connected Clients:[";
+    for (int i = 0; i < connected_clients.size(); i++) {
+        ClientMetaInfo client = connected_clients[i];
+        if (client.isLoggedIn) {
+            serialized_str.append(client.metaAsString());
+            if (i != connected_clients.size() - 1) {
+                serialized_str.append("\n");
+            }
+        }
+    }
+    serialized_str.append("]");
+    return (char*)serialized_str.c_str();
+}
+
+bool SortByPortNumber(const ClientMetaInfo& a, const ClientMetaInfo& b) {
+    int port_a = atoi(a.portNumber.c_str());
+    int port_b = atoi(b.portNumber.c_str());
+    return port_a > port_b;
+}
+
+void PrintClientsList(std::vector<ClientMetaInfo>& clientsList, std::string cmd) {
+    std::sort(clientsList.begin(), clientsList.end(), SortByPortNumber);
+    for (int i = 0; i < clientsList.size(); i++) {
+        ClientMetaInfo client = clientsList[i];
+        if (client.isLoggedIn) {
+            cse4589_print_and_log("%-5d%-35s%-20s%-8s\n", i + 1, client.hostName.c_str(), client.ipAddress.c_str(), client.portNumber.c_str());
+        }
+    }
+    cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+    PrintEndCommand(false, cmd);
 }
