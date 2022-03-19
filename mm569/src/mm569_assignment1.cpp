@@ -22,9 +22,13 @@
  */
 #include <iostream>
 #include <stdio.h>
+#include <string.h>
 
 #include "../include/global.h"
 #include "../include/logger.h"
+#include "../include/server.h"
+#include "../include/client.h"
+
 
 using namespace std;
 
@@ -45,7 +49,13 @@ int main(int argc, char **argv)
 
 	/*Start Here*/
 
-	cout << argv[0] << argv[1] << argv[2];
+
+	if (strcmp(argv[1], "s") == 0) {
+		cout<<"Init server";
+		initServer(argv[2]);
+	} else if (strcmp(argv[1], "c") == 0) {
+		initClient(argc, argv);
+	}
 
 	return 0;
 }

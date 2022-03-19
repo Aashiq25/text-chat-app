@@ -30,8 +30,13 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include<iostream>
+
+#include <arpa/inet.h>
 
 #include "../include/server.h"
+#include "../include/logger.h"
+#include "../include/helpers.h"
 
 #define BACKLOG 5
 #define STDIN 0
@@ -46,13 +51,8 @@
  * @param  argv The argument list
  * @return 0 EXIT_SUCCESS
  */
-int initServer(int argc, char **argv)
+int initServer(char* port)
 {
-	if (argc != 2)
-	{
-		printf("Usage:%s [port]\n", argv[0]);
-		exit(-1);
-	}
 
 	int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
 	struct sockaddr_in client_addr;
@@ -66,7 +66,7 @@ int initServer(int argc, char **argv)
 	hints.ai_flags = AI_PASSIVE;
 
 	/* Fill up address structures */
-	if (getaddrinfo(NULL, argv[1], &hints, &res) != 0)
+	if (getaddrinfo(NULL, port, &hints, &res) != 0)
 		perror("getaddrinfo failed");
 
 	/* Socket */
@@ -101,8 +101,8 @@ int initServer(int argc, char **argv)
 	{
 		memcpy(&watch_list, &master_list, sizeof(master_list));
 
-		// printf("\n[PA1-Server@CSE489/589]$ ");
-		// fflush(stdout);
+		cse4589_print_and_log("[PA1-Server@CSE489/589]$ ");
+		fflush(stdout);
 
 		/* select() system call. This will BLOCK */
 		selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
@@ -128,9 +128,22 @@ int initServer(int argc, char **argv)
 						if (fgets(cmd, CMD_SIZE - 1, stdin) == NULL) // Mind the newline character that will be written to cmd
 							exit(-1);
 
-						printf("\nI got: %s\n", cmd);
+						printf("I got: %s", cmd);
 
 						// Process PA1 commands here ...
+						
+						// Get input command
+						std::string input_command(cmd);
+						trim(input_command);
+
+						if (input_command == "AUTHOR") {
+							PrintAuthor(input_command);
+						} else if (input_command == "IP") {
+							PrintIpAddress(input_command);
+						} else if (input_command == "PORT") {
+							PrintPortNumber(input_command, server_socket);
+						}
+
 
 						free(cmd);
 					}

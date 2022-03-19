@@ -28,8 +28,11 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include<iostream>
 
 #include "../include/client.h"
+#include "../include/logger.h"
+#include "../include/helpers.h"
 
 #define TRUE 1
 #define MSG_SIZE 256
@@ -44,18 +47,17 @@
  */
 int initClient(int argc, char **argv)
 {
-	if (argc != 3)
-	{
-		printf("Usage:%s [ip] [port]\n", argv[0]);
-		exit(-1);
-	}
+	// if (argc != 3)
+	// {
+	// 	printf("Usage:%s [ip] [port]\n", argv[0]);
+	// 	exit(-1);
+	// }
 
-	int server;
-	server = connect_to_host(argv[1], argv[2]);
+	
 
 	while (TRUE)
 	{
-		printf("\n[PA1-Client@CSE489/589]$ ");
+		cse4589_print_and_log("[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
 
 		char *msg = (char *)malloc(sizeof(char) * MSG_SIZE);
@@ -64,9 +66,26 @@ int initClient(int argc, char **argv)
 			exit(-1);
 
 		printf("I got: %s(size:%lu chars)", msg, strlen(msg));
+		int server = -1;
+		std::string input_command(msg);
+		trim(input_command);
+		if (input_command == "AUTHOR") {
+			PrintAuthor(input_command);
+		} else if (input_command == "IP") {
+			PrintIpAddress(input_command);
+		} else if (input_command == "PORT") {
+			PrintClientPortNumber(input_command, argv[2]);
+		} else if (input_command.substr(0, 5) == "LOGIN") {
+			std::cout<<"Received Login ";
+			std::size_t ip_seperator = input_command.find(" "), port_seperator;
+			port_seperator = input_command.find(" ", ip_seperator + 1);
+  			std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
+			std::string port = input_command.substr(port_seperator + 1);
 
-		printf("\nSENDing it to the remote server ... ");
-		if (send(server, msg, strlen(msg), 0) == strlen(msg))
+
+			server = connect_to_host(server_ip, port);
+		}
+		if (server != -1 && send(server, msg, strlen(msg), 0) == strlen(msg))
 			printf("Done!\n");
 		fflush(stdout);
 
@@ -82,8 +101,9 @@ int initClient(int argc, char **argv)
 	}
 }
 
-int connect_to_host(char *server_ip, char *server_port)
+int connect_to_host(std::string server_ip, std::string server_port)
 {
+	cse4589_print_and_log("Server IP:%s Port:%s", server_ip.c_str(), server_port.c_str());
 	int fdsocket;
 	struct addrinfo hints, *res;
 
@@ -93,7 +113,7 @@ int connect_to_host(char *server_ip, char *server_port)
 	hints.ai_socktype = SOCK_STREAM;
 
 	/* Fill up address structures */
-	if (getaddrinfo(server_ip, server_port, &hints, &res) != 0)
+	if (getaddrinfo(server_ip.c_str(), server_port.c_str(), &hints, &res) != 0)
 		perror("getaddrinfo failed");
 
 	/* Socket */
@@ -108,4 +128,10 @@ int connect_to_host(char *server_ip, char *server_port)
 	freeaddrinfo(res);
 
 	return fdsocket;
+}
+
+
+void PrintClientPortNumber(std::string cmd, char* port) {
+	cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+	cse4589_print_and_log("PORT:%d\n", port);
 }

@@ -1,3 +1,9 @@
+#include<vector>
 
+int initServer(char *port);
 
-int initServer(int argc, char **argv);
+struct ClientMetaInfo {
+
+};
+
+std::vector<ClientMetaInfo*> connected_clients;
