@@ -233,6 +233,7 @@ void Client::PrintClientPortNumber(std::string cmd)
 {
 	cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
 	cse4589_print_and_log("PORT:%s\n", client_port.c_str());
+	cse4589_print_and_log("[%s:END]\n", cmd.c_str());
 }
 
 void Client::ParseAvailableClients(std::string msg)
