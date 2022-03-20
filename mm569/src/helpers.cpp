@@ -175,3 +175,42 @@ int FetchClientMetaIndex(std::vector<ClientMetaInfo*>& availableClients, std::st
 	}
 	return -1;
 }
+
+bool IsValidIpAddress(std::string ipAddress) {
+
+    std::vector<std::string> splitList = Split(ipAddress, '.');
+    if (splitList.size() != 4) {
+        return false;
+    }
+
+    for (int i = 0; i < splitList.size(); i++) {
+        if (!IsNumber(splitList[i]) || atoi(splitList[i].c_str()) > 255 || atoi(splitList[i].c_str()) < 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool IsNumber(std::string str)
+{
+    return !str.empty() && (str.find_first_not_of("[0123456789]") == std::string::npos);
+}
+
+std::vector<std::string> Split(std::string &str, char delimiter)
+{
+    int i = 0;
+    std::vector<std::string> strList;
+ 
+    std::size_t index = str.find(delimiter);
+ 
+    while (index != std::string::npos)
+    {
+        strList.push_back(str.substr(i, index - i));
+        index++;
+        i = index;
+        index = str.find(delimiter, index);
+    }
+    strList.push_back(str.substr(i, str.length()));
+ 
+    return strList;
+}

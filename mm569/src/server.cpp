@@ -282,25 +282,41 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 {
 	std::string cmd(msg.substr(0, 4));
 
+	std::string senderIp = fdVsIP[fromSocket];
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string receiverIpAddress = msg.substr(ipStart, ipEnd - ipStart), message = msg.substr(ipEnd + 1);
 
-	// TODO Implement Check for block and active
-
-
-
 	
 	cse4589_print_and_log("[RELAYED:SUCCESS]\n");
-	cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", fdVsIP[fromSocket].c_str(), receiverIpAddress.c_str(), message.c_str());
+	cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", senderIp.c_str(), receiverIpAddress.c_str(), message.c_str());
 	cse4589_print_and_log("[RELAYED:END]\n");
-	std::string sendMessage = "From:" + fdVsIP[fromSocket] + ",Message:" + message;
+	std::string sendMessage = "From:" + senderIp + ",Message:" + message;
 
-	if (send(detailsMap[receiverIpAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
-	{
-		detailsMap[fdVsIP[fromSocket]]->sent++;
-		detailsMap[receiverIpAddress]->received++;
-		printf("Sent message to client!\n");
+	int senderInMap = -1;
+	if (blockInfo.find(receiverIpAddress) != blockInfo.end()) {
+		senderInMap = FetchClientMetaIndex(blockInfo[receiverIpAddress], senderIp);
+		if (senderInMap != -1) {
+			// Blocked IP 
+			// TODO check if we have to increment sent count
+			return;
+		}
+	}
+
+
+	ClientMetaInfo* receiverMeta = FetchClientMeta(connected_clients, receiverIpAddress);
+
+	if (receiverMeta != NULL && receiverMeta->isLoggedIn) {
+		if (send(detailsMap[receiverIpAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
+		{
+			detailsMap[senderIp]->sent++;
+			detailsMap[receiverIpAddress]->received++;
+			printf("Sent message to client!\n");
+		}
+
+	} else {
+		// Add to Buffer
+		
 	}
 
 }
@@ -376,7 +392,6 @@ void Server::PrintBlockedClientsList(std::string msg) {
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string clientIpAddress = msg.substr(ipStart);
 
-	// TODO add valid IP Check
 
 	if (blockInfo.find(clientIpAddress) != blockInfo.end()) {
 		PrintClientsList(blockInfo[clientIpAddress], cmd);

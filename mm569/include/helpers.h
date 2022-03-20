@@ -29,3 +29,9 @@ bool IsClientLoggedIn(std::vector<ClientMetaInfo*>& availableClients, std::strin
 ClientMetaInfo* FetchClientMeta(std::vector<ClientMetaInfo*>& availableClients, std::string ipAddress);
 
 int FetchClientMetaIndex(std::vector<ClientMetaInfo*>& availableClients, std::string ipAddress);
+
+bool IsValidIpAddress(std::string ipAddress);
+
+bool IsNumber(std::string str);
+
+std::vector<std::string> Split(std::string &str, char delimiter);
