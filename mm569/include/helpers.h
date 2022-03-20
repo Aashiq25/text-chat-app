@@ -1,5 +1,6 @@
 #include "../include/global.h"
 #include<vector>
+#include<map>
 
 void trim(std::string& input_str);
 
@@ -20,3 +21,5 @@ char* SerializeConnectedClients(std::vector<ClientMetaInfo>& connected_clients);
 bool SortByPortNumber(const ClientMetaInfo& a, const ClientMetaInfo& b);
 
 void PrintClientsList(std::vector<ClientMetaInfo>& clientsList, std::string cmd);
+
+void PrintClientStatistics(std::vector<ClientMetaInfo>& clientsList, std::string cmd, std::map<std::string, ServerStatistics*>& detailsMap);

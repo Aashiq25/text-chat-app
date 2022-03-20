@@ -153,6 +153,8 @@ int Server::InitServer(char *port)
 						else if (input_command == "LIST")
 						{
 							PrintClientsList(connected_clients, input_command);
+						} else if (input_command == "STATISTICS") {
+							PrintClientStatistics(connected_clients, input_command, detailsMap);
 						}
 
 						free(cmd);
@@ -189,7 +191,6 @@ int Server::InitServer(char *port)
 						{
 							close(sock_index);
 							printf("Remote Host terminated connection!\n");
-
 							/* Remove from watched list */
 							FD_CLR(sock_index, &master_list);
 						}
@@ -211,10 +212,17 @@ int Server::InitServer(char *port)
 							else if (std::string(client_cmd.substr(0, 4)) == "SEND")
 							{
 								SendMessageToClient(std::string(client_cmd), sock_index);
+							} else if (client_cmd == "LOGOUT") {
+								ClientLogoutActions(sock_index, false);
+							} else if (client_cmd == "EXIT") {
+								ClientLogoutActions(sock_index, true);
+								close(sock_index);
+								FD_CLR(sock_index, &master_list);
+							} else if (std::string(client_cmd.substr(0, 5)) == "LOGIN") {
+								ReconnectClient(sock_index);
 							}
 
 							printf("\nClient sent me: %s\n", buffer);
-							printf("ECHOing it back to the remote host ... ");
 
 							fflush(stdout);
 						}
@@ -248,6 +256,21 @@ void Server::AddToConnectedList(struct sockaddr_in &client_addr, int acceptedfd)
 	fdVsIP.insert(std::pair<int, std::string>(acceptedfd, clientInfo.ipAddress));
 }
 
+void Server::ReconnectClient(int socketfd) {
+	std::string ipAddress = fdVsIP[socketfd];
+	for (int i = 0; i < connected_clients.size(); i++) {
+		if (ipAddress == connected_clients[i].ipAddress) {
+			connected_clients[i].isLoggedIn = true;
+			return;
+		}
+	}
+	char *serialized_data = SerializeConnectedClients(connected_clients);
+	if (send(socketfd, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
+	{
+		printf("Sent login list to client!\n");
+	}
+}
+
 void Server::SendMessageToClient(std::string msg, int fromSocket)
 {
 	std::string cmd(msg.substr(0, 4));
@@ -256,8 +279,40 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string receiverIpAddress = msg.substr(ipStart, ipEnd - ipStart), message = msg.substr(ipEnd + 1);
 
-	// TODO Implement Check for block
+	// TODO Implement Check for block and active
 
 
-	printf("Sending client IP %s receiving client IP %s", fdVsIp[fromSocket], receiverIpAddress.c_str());
+	
+	cse4589_print_and_log("[RELAYED:SUCCESS]\n");
+	cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", fdVsIP[fromSocket].c_str(), receiverIpAddress.c_str(), message.c_str());
+	cse4589_print_and_log("[RELAYED:END]\n");
+	std::string sendMessage = "From:" + fdVsIP[fromSocket] + ",Message:" + message;
+
+	if (send(detailsMap[receiverIpAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
+	{
+		detailsMap[fdVsIP[fromSocket]]->sent++;
+		detailsMap[receiverIpAddress]->received++;
+		printf("Sent message to client!\n");
+	}
+
+}
+
+void Server::ClientLogoutActions(int clientSocket, bool isExit) {
+	std::string clientIp = fdVsIP[clientSocket];
+
+	for (int i = 0; i < connected_clients.size(); i++) {
+		if (clientIp == connected_clients[i].ipAddress) {
+			if (isExit) {
+				connected_clients.erase(connected_clients.begin() + i);
+			} else {
+				connected_clients[i].isLoggedIn = false;
+			}
+			break;
+		}
+	}
+	if (isExit) {
+		detailsMap.erase(clientIp);
+		fdVsIP.erase(clientSocket);
+	}
+	
 }

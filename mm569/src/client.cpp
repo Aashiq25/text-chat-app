@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <iostream>
+#include <unistd.h>
 
 #include "../include/client.h"
 #include "../include/logger.h"
@@ -72,7 +73,7 @@ int Client::InitClient()
 		memcpy(&watch_list, &master_list, sizeof(master_list));
 		cse4589_print_and_log("[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
-		/* select() system call. This will BLOCK */
+
 		selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
 		if (selret < 0)
 			perror("select failed.");
@@ -112,15 +113,26 @@ int Client::InitClient()
 						}
 						else if (input_command.substr(0, 5) == "LOGIN")
 						{
-							std::size_t ip_seperator = input_command.find(" "), port_seperator;
-							port_seperator = input_command.find(" ", ip_seperator + 1);
-							std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
-							std::string server_port = input_command.substr(port_seperator + 1);
-							server = ConnectToHost(server_ip, server_port);
-							FD_SET(server, &master_list);
-							head_socket = server;
-						}
+							if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
+							{
+								isLoggedIn = true;
+							} else {
+								std::size_t ip_seperator = input_command.find(" "), port_seperator;
+								port_seperator = input_command.find(" ", ip_seperator + 1);
+								std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
+								std::string server_port = input_command.substr(port_seperator + 1);
+								server = ConnectToHost(server_ip, server_port);
+								FD_SET(server, &master_list);
+								head_socket = server;
+							}
 
+						}
+						else if (input_command == "EXIT") {
+							LogoutClient(input_command);
+							close(server);
+							FD_CLR(server, &master_list);
+							exit(0);
+						}
 						if (isLoggedIn)
 						{
 							if (input_command == "LIST")
@@ -136,7 +148,9 @@ int Client::InitClient()
 							}
 							else if (input_command.substr(0, 4) == "SEND")
 							{
-								SendMessage(std::string(input_command));
+								SendMessage(input_command);
+							} else if (input_command == "LOGOUT") {
+								LogoutClient(input_command);
 							}
 						}
 					}
@@ -149,21 +163,23 @@ int Client::InitClient()
 						int recv_status;
 						if ((recv_status = recv(server, buffer, BUFFER_SIZE, 0)) > 0)
 						{
-							printf("Server responded: %s", buffer);
+							
+							printf("Server responded: %s\n", buffer);
 							ParseAvailableClients(std::string(buffer));
+
+							PrintReceivedMessage(std::string(buffer));
+							fflush(stdout);
 						}
 						else if (recv_status == -1)
 						{
 							perror("Error occurred while receiving");
 						}
-						fflush(stdout);
+						
 						free(buffer);
 					}
 					else
 					{
 						// P2P new connections
-						
-						fflush(stdout);
 					}
 				}
 			}
@@ -226,6 +242,8 @@ void Client::ParseAvailableClients(std::string msg)
 	if (startIndex != -1)
 	{
 		startIndex += connected_str.size();
+	} else {
+		return;
 	}
 	std::string availableClientsStr = msg.substr(startIndex, msg.find("]", startIndex) - startIndex);
 
@@ -256,7 +274,7 @@ void Client::SendMessage(std::string msg)
 	printf("Client ip %s\n", ipAddress.c_str());
 	if (ClientExists(ipAddress))
 	{
-		printf("Client exists");
+		printf("Client exists\n");
 		if (server != -1 && send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{
 			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
@@ -278,4 +296,39 @@ bool Client::ClientExists(std::string &ipAddress)
 		}
 	}
 	return false;
+}
+
+void Client::PrintReceivedMessage(std::string incomingMsg) {
+	std::string fromStr = "From:", messageStr = ",Message:";
+    std::size_t ipStart = incomingMsg.find(fromStr), msgStart = incomingMsg.find(messageStr);
+
+    if (ipStart != -1 && msgStart != -1)
+    {
+        ipStart += fromStr.size();
+        msgStart += messageStr.size();
+    } else {
+        return;
+    }
+
+    std::size_t senderIpEnd = incomingMsg.find(",");
+
+    std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd-ipStart);
+    std::string message = incomingMsg.substr(msgStart);
+	cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
+	cse4589_print_and_log("msg from:%s\n[msg]:%s\n", senderIp.c_str(), message.c_str());
+	cse4589_print_and_log("[RECEIVED:END]\n");
+
+}
+
+void Client::LogoutClient(std::string cmd) {
+	if (server != -1 && send(server, cmd.c_str(), cmd.size(), 0) == cmd.size())
+	{
+		isLoggedIn = false;
+		if (cmd == "EXIT") {
+			server = -1;
+		}
+		cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+		cse4589_print_and_log("[%s:END]\n", cmd.c_str());
+		
+	}
 }

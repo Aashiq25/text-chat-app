@@ -121,12 +121,26 @@ bool SortByPortNumber(const ClientMetaInfo& a, const ClientMetaInfo& b) {
 
 void PrintClientsList(std::vector<ClientMetaInfo>& clientsList, std::string cmd) {
     std::sort(clientsList.begin(), clientsList.end(), SortByPortNumber);
+    cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+    int counter = 1;
     for (int i = 0; i < clientsList.size(); i++) {
         ClientMetaInfo client = clientsList[i];
         if (client.isLoggedIn) {
-            cse4589_print_and_log("%-5d%-35s%-20s%-8s\n", i + 1, client.hostName.c_str(), client.ipAddress.c_str(), client.portNumber.c_str());
+            cse4589_print_and_log("%-5d%-35s%-20s%-8s\n", counter++, client.hostName.c_str(), client.ipAddress.c_str(), client.portNumber.c_str());
         }
     }
+    PrintEndCommand(false, cmd);
+}
+
+
+void PrintClientStatistics(std::vector<ClientMetaInfo>& clientsList, std::string cmd, std::map<std::string, ServerStatistics*>& detailsMap) {
+    std::sort(clientsList.begin(), clientsList.end(), SortByPortNumber);
     cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+    int counter = 1;
+    for (int i = 0; i < clientsList.size(); i++) {
+        ClientMetaInfo client = clientsList[i];
+		std::string loginStatus = client.isLoggedIn ? "logged_in" : "logged_out";
+		cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", counter++, client.hostName.c_str(), detailsMap[client.ipAddress]->sent, detailsMap[client.ipAddress]->received, loginStatus.c_str());
+    }
     PrintEndCommand(false, cmd);
 }
