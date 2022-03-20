@@ -245,6 +245,7 @@ void Server::AddToConnectedList(struct sockaddr_in &client_addr, int acceptedfd)
 	ServerStatistics *ss = new ServerStatistics();
 	ss->socket = acceptedfd;
 	detailsMap.insert(std::pair<std::string, ServerStatistics *>(clientInfo.ipAddress, ss));
+	fdVsIP.insert(std::pair<int, std::string>(acceptedfd, clientInfo.ipAddress));
 }
 
 void Server::SendMessageToClient(std::string msg, int fromSocket)
@@ -257,9 +258,6 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 
 	// TODO Implement Check for block
 
-	sockaddr_in senderAddr;
-	getpeername(fromSocket, (sockaddr *)&(senderAddr), (socklen_t *)sizeof(senderAddr));
-	char senderIpAddress[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIpAddress, INET_ADDRSTRLEN);
-	printf("Sending client IP %s receiving client IP %s", senderIpAddress, receiverIpAddress.c_str());
+
+	printf("Sending client IP %s receiving client IP %s", fdVsIp[fromSocket], receiverIpAddress.c_str());
 }

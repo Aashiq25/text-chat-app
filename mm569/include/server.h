@@ -14,4 +14,5 @@ class Server {
     private:
         std::vector<ClientMetaInfo> connected_clients;
 	    std::map<std::string, ServerStatistics*> detailsMap;
+	    std::map<int, std::string> fdVsIP;
 };

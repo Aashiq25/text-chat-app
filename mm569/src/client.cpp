@@ -162,6 +162,8 @@ int Client::InitClient()
 					else
 					{
 						// P2P new connections
+						
+						fflush(stdout);
 					}
 				}
 			}
