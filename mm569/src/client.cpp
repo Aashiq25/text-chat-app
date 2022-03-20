@@ -159,9 +159,9 @@ int Client::InitClient()
 							} else if (input_command == "LOGOUT") {
 								LogoutClient(input_command);
 							} else if (input_command.substr(0, 5) == "BLOCK") {
-								BlockOrUnblockClient(input_command, input_command.substr(0, 5));
+								BlockClient(input_command, input_command.substr(0, 5));
 							} else if (input_command.substr(0, 7) == "UNBLOCK") {
-								BlockOrUnblockClient(input_command, input_command.substr(0, 7));
+								UnBlockClient(input_command, input_command.substr(0, 7));
 							} else if (input_command.substr(0, 9) == "BROADCAST") {
 								BroadCastMessage(input_command);
 							}
@@ -356,14 +356,31 @@ void Client::LogoutClient(std::string cmd) {
 	}
 }
 
-void Client::BlockOrUnblockClient(std::string msg, std::string cmd) {
+void Client::BlockClient(std::string msg, std::string cmd) {
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string ipAddress = msg.substr(ipStart);
 	bool didInform = false;
-	if (IsValidIpAddress(ipAddress) && ClientExists(ipAddress))
+	if (IsValidIpAddress(ipAddress) && ClientExists(ipAddress) && blockedIps.find(ipAddress) == blockedIps.end())
 	{
 		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{
+			blockedIps.insert(ipAddress);
+			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+			didInform = true;
+		}
+	}
+	PrintEndCommand(!didInform, cmd);
+}
+
+void Client::UnBlockClient(std::string msg, std::string cmd) {
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::string ipAddress = msg.substr(ipStart);
+	bool didInform = false;
+	if (IsValidIpAddress(ipAddress) && ClientExists(ipAddress) && blockedIps.find(ipAddress) != blockedIps.end())
+	{
+		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
+		{
+			blockedIps.erase(ipAddress);
 			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
 			didInform = true;
 		}
