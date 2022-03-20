@@ -15,6 +15,7 @@ class Server {
         void BlockClientActions(int fromSocket, std::string msg);
         void UnBlockClientActions(int fromSocket, std::string msg);
         void PrintBlockedClientsList(std::string msg);
+        void BroadCastMessage(std::string msg, int fromSocket);
     
     private:
         std::vector<ClientMetaInfo*> connected_clients;

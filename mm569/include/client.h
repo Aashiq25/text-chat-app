@@ -10,6 +10,7 @@ class Client {
         void PrintClientPortNumber(std::string cmd);
         void ParseAvailableClients(std::string msg);
         void SendMessage(std::string msg);
+        void BroadCastMessage(std::string msg);
         bool ClientExists(std::string ipAddress);
         void PrintReceivedMessage(std::string incomingMsg);
         void LogoutClient(std::string cmd);

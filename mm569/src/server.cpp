@@ -226,6 +226,8 @@ int Server::InitServer(char *port)
 								BlockClientActions(sock_index, client_cmd);
 							} else if (client_cmd.substr(0, 7) == "UNBLOCK") {
 								UnBlockClientActions(sock_index, client_cmd);
+							} else if (client_cmd.substr(0, 9) == "BROADCAST") {
+								BroadCastMessage(client_cmd, sock_index);
 							}
 
 							printf("\nClient sent me: %s\n", buffer);
@@ -311,13 +313,53 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 		{
 			detailsMap[senderIp]->sent++;
 			detailsMap[receiverIpAddress]->received++;
-			printf("Sent message to client!\n");
 		}
 
 	} else {
 		// Add to Buffer
 		
 	}
+
+}
+
+void Server::BroadCastMessage(std::string msg, int fromSocket)
+{
+
+	std::string senderIp = fdVsIP[fromSocket];
+	std::size_t msgStart = msg.find(" ");
+	std::string dummyReceiverIp = "255.255.255.255", message = msg.substr(msgStart + 1);
+
+	
+	cse4589_print_and_log("[RELAYED:SUCCESS]\n");
+	cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", senderIp.c_str(), dummyReceiverIp.c_str(), message.c_str());
+	cse4589_print_and_log("[RELAYED:END]\n");
+
+	std::string sendMessage = "From:" + senderIp + ",Message:" + message;
+
+	for (int i = 0; i < connected_clients.size(); i++) {
+		ClientMetaInfo* receiverMeta = connected_clients[i];
+		int senderInMap = -1;
+		if (blockInfo.find(receiverMeta->ipAddress) != blockInfo.end()) {
+			senderInMap = FetchClientMetaIndex(blockInfo[receiverMeta->ipAddress], senderIp);
+			if (senderInMap != -1) {
+				// Blocked IP 
+				continue;
+			}
+		}
+
+		if (receiverMeta->isLoggedIn) {
+			if (send(detailsMap[receiverMeta->ipAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
+			{
+				detailsMap[senderIp]->sent++;
+				detailsMap[receiverMeta->ipAddress]->received++;
+			}
+
+		} else {
+			// Add to Buffer
+			detailsMap[senderIp]->sent++;
+		}
+	}
+
 
 }
 

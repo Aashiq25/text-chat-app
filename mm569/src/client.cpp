@@ -155,6 +155,8 @@ int Client::InitClient()
 								BlockOrUnblockClient(input_command, input_command.substr(0, 5));
 							} else if (input_command.substr(0, 7) == "UNBLOCK") {
 								BlockOrUnblockClient(input_command, input_command.substr(0, 7));
+							} else if (input_command.substr(0, 9) == "BROADCAST") {
+								BroadCastMessage(input_command);
 							}
 						}
 					}
@@ -209,7 +211,6 @@ int Client::ConnectToHost(std::string server_ip, std::string server_port)
 	std::string clientIp = FetchMyIp();
 	if (getaddrinfo(clientIp.c_str(), client_port.c_str(), &hints, &client_addr) != 0)
 		perror("getaddrinfo failed");
-
 	// Create a socket for client
 	fdsocket = socket(client_addr->ai_family, client_addr->ai_socktype, client_addr->ai_protocol);
 	if (fdsocket < 0)
@@ -231,7 +232,7 @@ int Client::ConnectToHost(std::string server_ip, std::string server_port)
 void Client::PrintClientPortNumber(std::string cmd)
 {
 	cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
-	cse4589_print_and_log("PORT:%d\n", client_port.c_str());
+	cse4589_print_and_log("PORT:%s\n", client_port.c_str());
 }
 
 void Client::ParseAvailableClients(std::string msg)
@@ -275,10 +276,8 @@ void Client::SendMessage(std::string msg)
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart);
 	bool didSend = false;
-	printf("Client ip %s\n", ipAddress.c_str());
 	if (ClientExists(ipAddress))
 	{
-		printf("Client exists\n");
 		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{
 			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
@@ -286,6 +285,18 @@ void Client::SendMessage(std::string msg)
 		}
 	}
 
+	PrintEndCommand(!didSend, cmd);
+}
+
+void Client::BroadCastMessage(std::string msg)
+{
+	std::string cmd(msg.substr(0, 9));
+	bool didSend = false;
+	if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
+	{
+		cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+		didSend = true;
+	}
 	PrintEndCommand(!didSend, cmd);
 }
 
