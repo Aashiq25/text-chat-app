@@ -177,6 +177,8 @@ int Server::InitServer(char *port)
 							printf("Sent login list to client!\n");
 						}
 
+						ProcessBufferMessages(fdaccept);
+
 						/* Add to watched socket list */
 						FD_SET(fdaccept, &master_list);
 						if (fdaccept > head_socket)
@@ -278,6 +280,7 @@ void Server::ReconnectClient(int socketfd) {
 	{
 		printf("Sent login list to client!\n");
 	}
+	ProcessBufferMessages(socketfd);
 }
 
 void Server::SendMessageToClient(std::string msg, int fromSocket)
@@ -314,10 +317,10 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 			detailsMap[senderIp]->sent++;
 			detailsMap[receiverIpAddress]->received++;
 		}
-
 	} else {
 		// Add to Buffer
-		
+		detailsMap[senderIp]->sent++;
+		bufferMessages[receiverMeta->ipAddress].push_back(sendMessage);
 	}
 
 }
@@ -357,6 +360,7 @@ void Server::BroadCastMessage(std::string msg, int fromSocket)
 		} else {
 			// Add to Buffer
 			detailsMap[senderIp]->sent++;
+			bufferMessages[receiverMeta->ipAddress].push_back(sendMessage);
 		}
 	}
 
@@ -433,15 +437,29 @@ void Server::PrintBlockedClientsList(std::string msg) {
 
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string clientIpAddress = msg.substr(ipStart);
-
+	bool didPrint = false;
 	if (IsValidIpAddress(clientIpAddress)) { 
-		if (blockInfo.find(clientIpAddress) != blockInfo.end()) {
+		int clientIndex = FetchClientMetaIndex(connected_clients, clientIpAddress);
+		if (clientIndex != -1) {
 			PrintClientsList(blockInfo[clientIpAddress], cmd);
-		} else {
-			PrintEndCommand(true, msg);	
+			didPrint = true;
 		}
-	} else {
-		PrintEndCommand(false, msg);
+	}
+	if (!didPrint) {
+		PrintEndCommand(!didPrint, cmd);
 	}
 
+}
+
+void Server::ProcessBufferMessages(int socketfd) {
+	std::string clientIp = fdVsIP[socketfd];
+	for (int i = 0; i < bufferMessages[clientIp].size(); i++) {
+		std::string sendMessage = bufferMessages[clientIp][i];
+		if (send(socketfd, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
+		{
+			sleep(1);
+			detailsMap[clientIp]->received++;
+		}
+	}
+	bufferMessages[clientIp].clear();
 }

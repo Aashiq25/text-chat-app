@@ -16,10 +16,12 @@ class Server {
         void UnBlockClientActions(int fromSocket, std::string msg);
         void PrintBlockedClientsList(std::string msg);
         void BroadCastMessage(std::string msg, int fromSocket);
+        void ProcessBufferMessages(int socketfd);
     
     private:
         std::vector<ClientMetaInfo*> connected_clients;
 	    std::map<std::string, ServerStatistics*> detailsMap;
 	    std::map<int, std::string> fdVsIP;
         std::map<std::string, std::vector<ClientMetaInfo*> > blockInfo;
+        std::map<std::string, std::vector<std::string> > bufferMessages;
 };
