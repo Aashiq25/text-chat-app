@@ -25,14 +25,11 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <strings.h>
-#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <iostream>
 #include <arpa/inet.h>
-#include <map>
 
 #include "../include/server.h"
 #include "../include/logger.h"
@@ -51,19 +48,18 @@
  * @param  argv The argument list
  * @return 0 EXIT_SUCCESS
  */
-int initServer(char *port)
+
+Server::Server()
+{
+}
+
+int Server::InitServer(char *port)
 {
 
 	int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
 	struct sockaddr_in client_addr;
 	struct addrinfo hints, *res;
 	fd_set master_list, watch_list;
-
-	// Additional Data structures
-
-	std::vector<ClientMetaInfo> connected_clients;
-
-	std::map<std::string, MessageCount> countMap;
 
 	/* Set up hints structure */
 	memset(&hints, 0, sizeof(hints));
@@ -170,9 +166,8 @@ int initServer(char *port)
 							perror("Accept failed.");
 
 						printf("\nRemote Host connected!\n");
-						AddToConnectedList(client_addr, connected_clients);
+						AddToConnectedList(client_addr, fdaccept);
 						char *serialized_data = SerializeConnectedClients(connected_clients);
-
 						if (send(fdaccept, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
 						{
 							printf("Sent login list to client!\n");
@@ -204,7 +199,7 @@ int initServer(char *port)
 
 							std::string client_cmd(buffer);
 							trim(client_cmd);
-							printf("CLeint %s", client_cmd.c_str());
+							printf("Client %s", client_cmd.c_str());
 							if (client_cmd == "REFRESH")
 							{
 								char *serialized_data = SerializeConnectedClients(connected_clients);
@@ -212,6 +207,10 @@ int initServer(char *port)
 								{
 									printf("\nSent updated list to client! %d\n", strlen(serialized_data));
 								}
+							}
+							else if (std::string(client_cmd.substr(0, 4)) == "SEND")
+							{
+								SendMessageToClient(std::string(client_cmd), sock_index);
 							}
 
 							printf("\nClient sent me: %s\n", buffer);
@@ -230,7 +229,7 @@ int initServer(char *port)
 	return 0;
 }
 
-void AddToConnectedList(struct sockaddr_in &client_addr, std::vector<ClientMetaInfo> &connected_clients)
+void Server::AddToConnectedList(struct sockaddr_in &client_addr, int acceptedfd)
 {
 	ClientMetaInfo clientInfo;
 	char ipAddress[INET_ADDRSTRLEN];
@@ -243,4 +242,24 @@ void AddToConnectedList(struct sockaddr_in &client_addr, std::vector<ClientMetaI
 	std::string portNumberOfClient(str);
 	clientInfo.portNumber = portNumberOfClient;
 	connected_clients.push_back(clientInfo);
+	ServerStatistics *ss = new ServerStatistics();
+	ss->socket = acceptedfd;
+	detailsMap.insert(std::pair<std::string, ServerStatistics *>(clientInfo.ipAddress, ss));
+}
+
+void Server::SendMessageToClient(std::string msg, int fromSocket)
+{
+	std::string cmd(msg.substr(0, 4));
+
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::size_t ipEnd = msg.find(" ", ipStart);
+	std::string receiverIpAddress = msg.substr(ipStart, ipEnd - ipStart), message = msg.substr(ipEnd + 1);
+
+	// TODO Implement Check for block
+
+	sockaddr_in senderAddr;
+	getpeername(fromSocket, (sockaddr *)&(senderAddr), (socklen_t *)sizeof(senderAddr));
+	char senderIpAddress[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIpAddress, INET_ADDRSTRLEN);
+	printf("Sending client IP %s receiving client IP %s", senderIpAddress, receiverIpAddress.c_str());
 }

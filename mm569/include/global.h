@@ -48,8 +48,8 @@ struct ClientMetaInfo
     }
 };
 
-struct MessageCount {
-    int received, sent;
+struct ServerStatistics {
+    int received, sent, socket;
 };
 
 #endif

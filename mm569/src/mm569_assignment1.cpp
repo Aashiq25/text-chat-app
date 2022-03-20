@@ -51,7 +51,8 @@ int main(int argc, char **argv)
 
 
 	if (strcmp(argv[1], "s") == 0) {
-		initServer(argv[2]);
+		Server* serverInstance = new Server();
+		serverInstance->InitServer(argv[2]);
 	} else if (strcmp(argv[1], "c") == 0) {
 		Client* clientInstance = new Client(argc, argv);
 		clientInstance->InitClient();

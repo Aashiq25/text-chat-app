@@ -249,7 +249,7 @@ void Client::SendMessage(std::string msg)
 	std::string cmd(msg.substr(0, 4));
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::size_t ipEnd = msg.find(" ", ipStart);
-	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart), message = msg.substr(ipEnd + 1);
+	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart);
 	bool didSend = false;
 	printf("Client ip %s\n", ipAddress.c_str());
 	if (ClientExists(ipAddress))
