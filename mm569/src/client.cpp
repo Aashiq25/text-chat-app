@@ -113,17 +113,24 @@ int Client::InitClient()
 						}
 						else if (input_command.substr(0, 5) == "LOGIN")
 						{
-							if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
+							
+							std::size_t ip_seperator = input_command.find(" "), port_seperator;
+							port_seperator = input_command.find(" ", ip_seperator + 1);
+							std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
+							std::string server_port = input_command.substr(port_seperator + 1);
+
+							if (!IsValidIpAddress(server_ip) || !IsNumber(server_port)) {
+								PrintEndCommand(true, "LOGIN");
+							}
+							else if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
 							{
 								isLoggedIn = true;
 							} else {
-								std::size_t ip_seperator = input_command.find(" "), port_seperator;
-								port_seperator = input_command.find(" ", ip_seperator + 1);
-								std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
-								std::string server_port = input_command.substr(port_seperator + 1);
 								server = ConnectToHost(server_ip, server_port);
-								FD_SET(server, &master_list);
-								head_socket = server;
+								if (server != -1) {
+									FD_SET(server, &master_list);
+									head_socket = server;
+								}
 							}
 
 						}
@@ -277,7 +284,7 @@ void Client::SendMessage(std::string msg)
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart);
 	bool didSend = false;
-	if (ClientExists(ipAddress))
+	if (IsValidIpAddress(ipAddress) && ClientExists(ipAddress))
 	{
 		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{
@@ -352,8 +359,8 @@ void Client::LogoutClient(std::string cmd) {
 void Client::BlockOrUnblockClient(std::string msg, std::string cmd) {
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string ipAddress = msg.substr(ipStart);
-	bool didInform;
-	if (ClientExists(ipAddress))
+	bool didInform = false;
+	if (IsValidIpAddress(ipAddress) && ClientExists(ipAddress))
 	{
 		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{

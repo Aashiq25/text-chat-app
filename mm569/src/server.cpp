@@ -434,9 +434,14 @@ void Server::PrintBlockedClientsList(std::string msg) {
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string clientIpAddress = msg.substr(ipStart);
 
-
-	if (blockInfo.find(clientIpAddress) != blockInfo.end()) {
-		PrintClientsList(blockInfo[clientIpAddress], cmd);
+	if (IsValidIpAddress(clientIpAddress)) { 
+		if (blockInfo.find(clientIpAddress) != blockInfo.end()) {
+			PrintClientsList(blockInfo[clientIpAddress], cmd);
+		} else {
+			PrintEndCommand(true, msg);	
+		}
+	} else {
+		PrintEndCommand(false, msg);
 	}
 
 }
