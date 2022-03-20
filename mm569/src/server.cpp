@@ -353,7 +353,8 @@ void Server::BroadCastMessage(std::string msg, int fromSocket)
 		}
 
 		if (receiverMeta->isLoggedIn) {
-			if (send(detailsMap[receiverMeta->ipAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
+			std::string sendMessageRes = "Messages:[" + sendMessage + "]";
+			if (send(detailsMap[receiverMeta->ipAddress]->socket, sendMessageRes.c_str(), sendMessageRes.size(), 0) == sendMessageRes.size())
 			{
 				detailsMap[senderIp]->sent++;
 				detailsMap[receiverMeta->ipAddress]->received++;
