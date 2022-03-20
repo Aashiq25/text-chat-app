@@ -272,7 +272,6 @@ void Server::ReconnectClient(int socketfd) {
 		ClientMetaInfo* client = connected_clients[i];
 		if (ipAddress == client->ipAddress) {
 			client->isLoggedIn = true;
-			return;
 		}
 	}
 	char *serialized_data = SerializeConnectedClients(connected_clients);

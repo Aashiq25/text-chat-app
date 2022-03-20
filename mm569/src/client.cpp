@@ -249,7 +249,6 @@ void Client::ParseAvailableClients(std::string msg)
 	{
 		return;
 	}
-	availableClients.clear();
 	std::string connected_str = "Connected Clients:[";
 	std::size_t startIndex = msg.find(connected_str);
 	if (startIndex != -1)
@@ -258,6 +257,7 @@ void Client::ParseAvailableClients(std::string msg)
 	} else {
 		return;
 	}
+	availableClients.clear();
 	std::string availableClientsStr = msg.substr(startIndex, msg.find("]", startIndex) - startIndex);
 
 	std::size_t strSeperator1 = 0;
