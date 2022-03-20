@@ -98,12 +98,12 @@ std::string FetchHostName(struct sockaddr_in& sa) {
 }
 
 
-char* SerializeConnectedClients(std::vector<ClientMetaInfo>& connected_clients) {
+char* SerializeConnectedClients(std::vector<ClientMetaInfo*>& connected_clients) {
     std::string serialized_str = "Connected Clients:[";
     for (int i = 0; i < connected_clients.size(); i++) {
-        ClientMetaInfo client = connected_clients[i];
-        if (client.isLoggedIn) {
-            serialized_str.append(client.metaAsString());
+        ClientMetaInfo* client = connected_clients[i];
+        if (client->isLoggedIn) {
+            serialized_str.append(client->metaAsString());
             if (i != connected_clients.size() - 1) {
                 serialized_str.append("\n");
             }
@@ -113,34 +113,65 @@ char* SerializeConnectedClients(std::vector<ClientMetaInfo>& connected_clients) 
     return (char*)serialized_str.c_str();
 }
 
-bool SortByPortNumber(const ClientMetaInfo& a, const ClientMetaInfo& b) {
-    int port_a = atoi(a.portNumber.c_str());
-    int port_b = atoi(b.portNumber.c_str());
+bool SortByPortNumber(const ClientMetaInfo* a, const ClientMetaInfo* b) {
+    int port_a = atoi(a->portNumber.c_str());
+    int port_b = atoi(b->portNumber.c_str());
     return port_a < port_b;
 }
 
-void PrintClientsList(std::vector<ClientMetaInfo>& clientsList, std::string cmd) {
+void PrintClientsList(std::vector<ClientMetaInfo*>& clientsList, std::string cmd) {
     std::sort(clientsList.begin(), clientsList.end(), SortByPortNumber);
     cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
     int counter = 1;
     for (int i = 0; i < clientsList.size(); i++) {
-        ClientMetaInfo client = clientsList[i];
-        if (client.isLoggedIn) {
-            cse4589_print_and_log("%-5d%-35s%-20s%-8s\n", counter++, client.hostName.c_str(), client.ipAddress.c_str(), client.portNumber.c_str());
+        ClientMetaInfo* client = clientsList[i];
+        if (client->isLoggedIn) {
+            cse4589_print_and_log("%-5d%-35s%-20s%-8s\n", counter++, client->hostName.c_str(), client->ipAddress.c_str(), client->portNumber.c_str());
         }
     }
     PrintEndCommand(false, cmd);
 }
 
 
-void PrintClientStatistics(std::vector<ClientMetaInfo>& clientsList, std::string cmd, std::map<std::string, ServerStatistics*>& detailsMap) {
+void PrintClientStatistics(std::vector<ClientMetaInfo*>& clientsList, std::string cmd, std::map<std::string, ServerStatistics*>& detailsMap) {
     std::sort(clientsList.begin(), clientsList.end(), SortByPortNumber);
     cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
     int counter = 1;
     for (int i = 0; i < clientsList.size(); i++) {
-        ClientMetaInfo client = clientsList[i];
-		std::string loginStatus = client.isLoggedIn ? "logged_in" : "logged_out";
-		cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", counter++, client.hostName.c_str(), detailsMap[client.ipAddress]->sent, detailsMap[client.ipAddress]->received, loginStatus.c_str());
+        ClientMetaInfo* client = clientsList[i];
+		std::string loginStatus = client->isLoggedIn ? "logged_in" : "logged_out";
+		cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", counter++, client->hostName.c_str(), detailsMap[client->ipAddress]->sent, detailsMap[client->ipAddress]->received, loginStatus.c_str());
     }
     PrintEndCommand(false, cmd);
+}
+
+bool IsClientLoggedIn(std::vector<ClientMetaInfo*>& availableClients, std::string ipAddress) {
+	ClientMetaInfo* client = FetchClientMeta(availableClients, ipAddress);
+    if (client != NULL && client->isLoggedIn) {
+        return true;
+    }
+	return false;
+}
+
+ClientMetaInfo* FetchClientMeta(std::vector<ClientMetaInfo*>& availableClients, std::string ipAddress) {
+	for (int i = 0; i < availableClients.size(); i++)
+	{
+		ClientMetaInfo* client = availableClients[i];
+		if (client->ipAddress == ipAddress)
+		{
+			return client;
+		}
+	}
+	return NULL;
+}
+int FetchClientMetaIndex(std::vector<ClientMetaInfo*>& availableClients, std::string ipAddress) {
+	for (int i = 0; i < availableClients.size(); i++)
+	{
+		ClientMetaInfo* client = availableClients[i];
+		if (client->ipAddress == ipAddress)
+		{
+			return i;
+		}
+	}
+	return -1;
 }

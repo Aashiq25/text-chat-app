@@ -155,6 +155,8 @@ int Server::InitServer(char *port)
 							PrintClientsList(connected_clients, input_command);
 						} else if (input_command == "STATISTICS") {
 							PrintClientStatistics(connected_clients, input_command, detailsMap);
+						} else if (input_command.substr(0, 7) == "BLOCKED") {
+							PrintBlockedClientsList(input_command);
 						}
 
 						free(cmd);
@@ -209,7 +211,7 @@ int Server::InitServer(char *port)
 									printf("\nSent updated list to client! %d\n", strlen(serialized_data));
 								}
 							}
-							else if (std::string(client_cmd.substr(0, 4)) == "SEND")
+							else if (client_cmd.substr(0, 4) == "SEND")
 							{
 								SendMessageToClient(std::string(client_cmd), sock_index);
 							} else if (client_cmd == "LOGOUT") {
@@ -218,8 +220,12 @@ int Server::InitServer(char *port)
 								ClientLogoutActions(sock_index, true);
 								close(sock_index);
 								FD_CLR(sock_index, &master_list);
-							} else if (std::string(client_cmd.substr(0, 5)) == "LOGIN") {
+							} else if (client_cmd.substr(0, 5) == "LOGIN") {
 								ReconnectClient(sock_index);
+							} else if (client_cmd.substr(0, 5) == "BLOCK") {
+								BlockClientActions(sock_index, client_cmd);
+							} else if (client_cmd.substr(0, 7) == "UNBLOCK") {
+								UnBlockClientActions(sock_index, client_cmd);
 							}
 
 							printf("\nClient sent me: %s\n", buffer);
@@ -239,28 +245,29 @@ int Server::InitServer(char *port)
 
 void Server::AddToConnectedList(struct sockaddr_in &client_addr, int acceptedfd)
 {
-	ClientMetaInfo clientInfo;
+	ClientMetaInfo* clientInfo = new ClientMetaInfo();
 	char ipAddress[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &(client_addr.sin_addr), ipAddress, INET_ADDRSTRLEN);
-	clientInfo.ipAddress = ipAddress;
-	clientInfo.hostName = FetchHostName(client_addr);
-	clientInfo.isLoggedIn = true;
+	clientInfo->ipAddress = ipAddress;
+	clientInfo->hostName = FetchHostName(client_addr);
+	clientInfo->isLoggedIn = true;
 	char str[100];
 	sprintf(str, "%d", ntohs(client_addr.sin_port));
 	std::string portNumberOfClient(str);
-	clientInfo.portNumber = portNumberOfClient;
+	clientInfo->portNumber = portNumberOfClient;
 	connected_clients.push_back(clientInfo);
 	ServerStatistics *ss = new ServerStatistics();
 	ss->socket = acceptedfd;
-	detailsMap.insert(std::pair<std::string, ServerStatistics *>(clientInfo.ipAddress, ss));
-	fdVsIP.insert(std::pair<int, std::string>(acceptedfd, clientInfo.ipAddress));
+	detailsMap.insert(std::pair<std::string, ServerStatistics *>(clientInfo->ipAddress, ss));
+	fdVsIP.insert(std::pair<int, std::string>(acceptedfd, clientInfo->ipAddress));
 }
 
 void Server::ReconnectClient(int socketfd) {
 	std::string ipAddress = fdVsIP[socketfd];
 	for (int i = 0; i < connected_clients.size(); i++) {
-		if (ipAddress == connected_clients[i].ipAddress) {
-			connected_clients[i].isLoggedIn = true;
+		ClientMetaInfo* client = connected_clients[i];
+		if (ipAddress == client->ipAddress) {
+			client->isLoggedIn = true;
 			return;
 		}
 	}
@@ -282,6 +289,7 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 	// TODO Implement Check for block and active
 
 
+
 	
 	cse4589_print_and_log("[RELAYED:SUCCESS]\n");
 	cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", fdVsIP[fromSocket].c_str(), receiverIpAddress.c_str(), message.c_str());
@@ -301,11 +309,12 @@ void Server::ClientLogoutActions(int clientSocket, bool isExit) {
 	std::string clientIp = fdVsIP[clientSocket];
 
 	for (int i = 0; i < connected_clients.size(); i++) {
-		if (clientIp == connected_clients[i].ipAddress) {
+		ClientMetaInfo* client = connected_clients[i];
+		if (clientIp == client->ipAddress) {
 			if (isExit) {
 				connected_clients.erase(connected_clients.begin() + i);
 			} else {
-				connected_clients[i].isLoggedIn = false;
+				client->isLoggedIn = false;
 			}
 			break;
 		}
@@ -315,4 +324,54 @@ void Server::ClientLogoutActions(int clientSocket, bool isExit) {
 		fdVsIP.erase(clientSocket);
 	}
 	
+}
+
+void Server::BlockClientActions(int fromSocket, std::string msg) {
+	std::string cmd(msg.substr(0, 5));
+
+	std::string senderIP = fdVsIP[fromSocket];
+
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::string receiverIpAddress = msg.substr(ipStart);
+
+	ClientMetaInfo* receiver = FetchClientMeta(connected_clients, receiverIpAddress);
+
+	if (receiver != NULL) {
+		int receiverInMap = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		if (receiverInMap == -1) {
+			blockInfo[senderIP].push_back(receiver);
+		}
+	}
+
+}
+
+void Server::UnBlockClientActions(int fromSocket, std::string msg) {
+	std::string cmd(msg.substr(0, 7));
+
+	std::string senderIP = fdVsIP[fromSocket];
+
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::string receiverIpAddress = msg.substr(ipStart);
+
+	int client = FetchClientMetaIndex(connected_clients, receiverIpAddress);
+
+	if (client != -1) {
+		int receiverIndex = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		if (receiverIndex != -1) {
+			blockInfo[senderIP].erase(blockInfo[senderIP].begin() + receiverIndex);
+		}
+	}
+}
+
+void Server::PrintBlockedClientsList(std::string msg) {
+	std::string cmd(msg.substr(0, 7));
+
+
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::string clientIpAddress = msg.substr(ipStart);
+
+	// TODO add valid IP Check
+
+	PrintClientsList(blockInfo[clientIpAddress], cmd);
+
 }

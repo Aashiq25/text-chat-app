@@ -10,12 +10,13 @@ class Client {
         void PrintClientPortNumber(std::string cmd);
         void ParseAvailableClients(std::string msg);
         void SendMessage(std::string msg);
-        bool ClientExists(std::string& ipAddress);
+        bool ClientExists(std::string ipAddress);
         void PrintReceivedMessage(std::string incomingMsg);
         void LogoutClient(std::string cmd);
+        void BlockClient(std::string cmd);
     private:
         std::string client_port;
         bool isLoggedIn;
         int server;
-        std::vector<ClientMetaInfo> availableClients;
+        std::vector<ClientMetaInfo*> availableClients;
 };

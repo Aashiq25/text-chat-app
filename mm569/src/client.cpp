@@ -141,7 +141,7 @@ int Client::InitClient()
 							}
 							else if (input_command == "REFRESH")
 							{
-								if (server != -1 && send(server, msg, strlen(msg), 0) == strlen(msg))
+								if (send(server, msg, strlen(msg), 0) == strlen(msg))
 								{
 									printf("Refresh requested!\n");
 								}
@@ -151,6 +151,8 @@ int Client::InitClient()
 								SendMessage(input_command);
 							} else if (input_command == "LOGOUT") {
 								LogoutClient(input_command);
+							} else if (input_command.substr(0, 5) == "BLOCK") {
+								BlockClient(input_command);
 							}
 						}
 					}
@@ -256,8 +258,8 @@ void Client::ParseAvailableClients(std::string msg)
 														   (strSeperator2 != -1 ? strSeperator2 - strSeperator1
 																				: availableClientsStr.size() - strSeperator1));
 
-		ClientMetaInfo ct;
-		ct.stringToCMI(clientStr);
+		ClientMetaInfo* ct = new ClientMetaInfo;
+		ct->stringToCMI(clientStr);
 		availableClients.push_back(ct);
 
 		strSeperator1 = (strSeperator2 != -1 ? strSeperator2 + 1 : -1);
@@ -275,7 +277,7 @@ void Client::SendMessage(std::string msg)
 	if (ClientExists(ipAddress))
 	{
 		printf("Client exists\n");
-		if (server != -1 && send(server, msg.c_str(), msg.size(), 0) == msg.size())
+		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
 		{
 			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
 			didSend = true;
@@ -285,12 +287,12 @@ void Client::SendMessage(std::string msg)
 	PrintEndCommand(!didSend, cmd);
 }
 
-bool Client::ClientExists(std::string &ipAddress)
+bool Client::ClientExists(std::string ipAddress)
 {
 	for (int i = 0; i < availableClients.size(); i++)
 	{
-		ClientMetaInfo client = availableClients[i];
-		if (client.ipAddress == ipAddress)
+		ClientMetaInfo* client = availableClients[i];
+		if (client->ipAddress == ipAddress)
 		{
 			return true;
 		}
@@ -321,7 +323,7 @@ void Client::PrintReceivedMessage(std::string incomingMsg) {
 }
 
 void Client::LogoutClient(std::string cmd) {
-	if (server != -1 && send(server, cmd.c_str(), cmd.size(), 0) == cmd.size())
+	if (send(server, cmd.c_str(), cmd.size(), 0) == cmd.size())
 	{
 		isLoggedIn = false;
 		if (cmd == "EXIT") {
@@ -331,4 +333,20 @@ void Client::LogoutClient(std::string cmd) {
 		cse4589_print_and_log("[%s:END]\n", cmd.c_str());
 		
 	}
+}
+
+void Client::BlockClient(std::string msg) {
+	std::string cmd(msg.substr(0, 5));
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::string ipAddress = msg.substr(ipStart);
+	bool didInform;
+	if (ClientExists(ipAddress))
+	{
+		if (send(server, msg.c_str(), msg.size(), 0) == msg.size())
+		{
+			cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
+			didInform = true;
+		}
+	}
+	PrintEndCommand(!didInform, cmd);
 }
