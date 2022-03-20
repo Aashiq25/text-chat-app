@@ -13,7 +13,7 @@ class Client {
         bool ClientExists(std::string ipAddress);
         void PrintReceivedMessage(std::string incomingMsg);
         void LogoutClient(std::string cmd);
-        void BlockClient(std::string cmd);
+        void BlockOrUnblockClient(std::string msg, std::string cmd);
     private:
         std::string client_port;
         bool isLoggedIn;

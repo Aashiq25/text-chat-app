@@ -152,7 +152,9 @@ int Client::InitClient()
 							} else if (input_command == "LOGOUT") {
 								LogoutClient(input_command);
 							} else if (input_command.substr(0, 5) == "BLOCK") {
-								BlockClient(input_command);
+								BlockOrUnblockClient(input_command, input_command.substr(0, 5));
+							} else if (input_command.substr(0, 7) == "UNBLOCK") {
+								BlockOrUnblockClient(input_command, input_command.substr(0, 7));
 							}
 						}
 					}
@@ -335,8 +337,7 @@ void Client::LogoutClient(std::string cmd) {
 	}
 }
 
-void Client::BlockClient(std::string msg) {
-	std::string cmd(msg.substr(0, 5));
+void Client::BlockOrUnblockClient(std::string msg, std::string cmd) {
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string ipAddress = msg.substr(ipStart);
 	bool didInform;

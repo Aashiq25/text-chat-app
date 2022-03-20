@@ -337,7 +337,10 @@ void Server::BlockClientActions(int fromSocket, std::string msg) {
 	ClientMetaInfo* receiver = FetchClientMeta(connected_clients, receiverIpAddress);
 
 	if (receiver != NULL) {
-		int receiverInMap = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		int receiverInMap = -1;
+		if (blockInfo.find(senderIP) != blockInfo.end()) {
+			receiverInMap = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		}
 		if (receiverInMap == -1) {
 			blockInfo[senderIP].push_back(receiver);
 		}
@@ -356,7 +359,10 @@ void Server::UnBlockClientActions(int fromSocket, std::string msg) {
 	int client = FetchClientMetaIndex(connected_clients, receiverIpAddress);
 
 	if (client != -1) {
-		int receiverIndex = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		int receiverIndex = -1;
+		if (blockInfo.find(senderIP) != blockInfo.end()) {
+			receiverIndex = FetchClientMetaIndex(blockInfo[senderIP], receiverIpAddress);
+		}
 		if (receiverIndex != -1) {
 			blockInfo[senderIP].erase(blockInfo[senderIP].begin() + receiverIndex);
 		}
@@ -372,6 +378,8 @@ void Server::PrintBlockedClientsList(std::string msg) {
 
 	// TODO add valid IP Check
 
-	PrintClientsList(blockInfo[clientIpAddress], cmd);
+	if (blockInfo.find(clientIpAddress) != blockInfo.end()) {
+		PrintClientsList(blockInfo[clientIpAddress], cmd);
+	}
 
 }
