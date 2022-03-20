@@ -139,7 +139,7 @@ void PrintClientStatistics(std::vector<ClientMetaInfo*>& clientsList, std::strin
     int counter = 1;
     for (int i = 0; i < clientsList.size(); i++) {
         ClientMetaInfo* client = clientsList[i];
-		std::string loginStatus = client->isLoggedIn ? "logged_in" : "logged_out";
+		std::string loginStatus = client->isLoggedIn ? "logged-in" : "logged-out";
 		cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", counter++, client->hostName.c_str(), detailsMap[client->ipAddress]->sent, detailsMap[client->ipAddress]->received, loginStatus.c_str());
     }
     PrintEndCommand(false, cmd);
