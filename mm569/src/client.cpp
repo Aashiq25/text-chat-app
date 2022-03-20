@@ -37,7 +37,6 @@
 
 #define TRUE 1
 #define MSG_SIZE 256
-#define BUFFER_SIZE 1024
 #define STDIN 0
 
 /**
@@ -119,7 +118,7 @@ int Client::InitClient()
 							std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
 							std::string server_port = input_command.substr(port_seperator + 1);
 
-							if (!IsValidIpAddress(server_ip) || !IsNumber(server_port)) {
+							if (!IsValidIpAddress(server_ip) || !IsValidPort(server_port)) {
 								PrintEndCommand(true, "LOGIN");
 							}
 							else if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
@@ -321,25 +320,39 @@ bool Client::ClientExists(std::string ipAddress)
 	return false;
 }
 
-void Client::PrintReceivedMessage(std::string incomingMsg) {
-	std::string fromStr = "From:", messageStr = ",Message:";
-    std::size_t ipStart = incomingMsg.find(fromStr), msgStart = incomingMsg.find(messageStr);
+void Client::PrintReceivedMessage(std::string msg) {
+	std::string msg_start_str = "Messages:[";
+	std::size_t startIndex = msg.find(msg_start_str);
+	if (startIndex != -1)
+	{
+		startIndex += msg_start_str.size();
+	} else {
+		return;
+	}
+	std::string messagesString = msg.substr(startIndex, msg.find("]", startIndex) - startIndex);
+	std::vector<std::string> messageList = Split(messagesString, '\n');
+	
+	for (int i = 0; i < messageList.size(); i++) {
+		std::string incomingMsg = messageList[i];
+		std::string fromStr = "From:", messageStr = ",Message:";
+		std::size_t ipStart = incomingMsg.find(fromStr), msgStart = incomingMsg.find(messageStr);
 
-    if (ipStart != -1 && msgStart != -1)
-    {
-        ipStart += fromStr.size();
-        msgStart += messageStr.size();
-    } else {
-        return;
-    }
+		if (ipStart != -1 && msgStart != -1)
+		{
+			ipStart += fromStr.size();
+			msgStart += messageStr.size();
+		} else {
+			return;
+		}
 
-    std::size_t senderIpEnd = incomingMsg.find(",");
+		std::size_t senderIpEnd = incomingMsg.find(",");
 
-    std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd-ipStart);
-    std::string message = incomingMsg.substr(msgStart);
-	cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
-	cse4589_print_and_log("msg from:%s\n[msg]:%s\n", senderIp.c_str(), message.c_str());
-	cse4589_print_and_log("[RECEIVED:END]\n");
+		std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd-ipStart);
+		std::string message = incomingMsg.substr(msgStart);
+		cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
+		cse4589_print_and_log("msg from:%s\n[msg]:%s\n", senderIp.c_str(), message.c_str());
+		cse4589_print_and_log("[RECEIVED:END]\n");
+	}
 
 }
 

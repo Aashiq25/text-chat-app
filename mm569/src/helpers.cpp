@@ -10,7 +10,6 @@
 #include <algorithm>
 #include "../include/helpers.h"
 #include "../include/logger.h"
-
 void trim(std::string& input_str) {
     input_str.erase(input_str.find_last_not_of(' ') + 1);
     input_str.erase(0, input_str.find_first_not_of(' '));
@@ -213,4 +212,15 @@ std::vector<std::string> Split(std::string &str, char delimiter)
     strList.push_back(str.substr(i, str.length()));
  
     return strList;
+}
+
+bool IsValidPort(std::string port) {
+    if (!IsNumber(port)) {
+        return false;
+    }
+    int portNumber = atoi(port.c_str());
+    if (portNumber < 0 || portNumber > 65535) {
+        return false;
+    }
+    return true;
 }

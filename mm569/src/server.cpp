@@ -39,7 +39,6 @@
 #define STDIN 0
 #define TRUE 1
 #define CMD_SIZE 100
-#define BUFFER_SIZE 256
 
 /**
  * main function
@@ -311,6 +310,7 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 	ClientMetaInfo* receiverMeta = FetchClientMeta(connected_clients, receiverIpAddress);
 
 	if (receiverMeta != NULL && receiverMeta->isLoggedIn) {
+		sendMessage = "Messages:[" + sendMessage + "]";
 		if (send(detailsMap[receiverIpAddress]->socket, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
 		{
 			detailsMap[senderIp]->sent++;
@@ -340,6 +340,9 @@ void Server::BroadCastMessage(std::string msg, int fromSocket)
 
 	for (int i = 0; i < connected_clients.size(); i++) {
 		ClientMetaInfo* receiverMeta = connected_clients[i];
+		if (senderIp == receiverMeta->ipAddress) {
+			continue;
+		}
 		int senderInMap = -1;
 		if (blockInfo.find(receiverMeta->ipAddress) != blockInfo.end()) {
 			senderInMap = FetchClientMetaIndex(blockInfo[receiverMeta->ipAddress], senderIp);
@@ -452,13 +455,22 @@ void Server::PrintBlockedClientsList(std::string msg) {
 
 void Server::ProcessBufferMessages(int socketfd) {
 	std::string clientIp = fdVsIP[socketfd];
+	std::string bufferMessageString = "Messages:[";
+	if (bufferMessages[clientIp].size() == 0) {
+		return;
+	}
 	for (int i = 0; i < bufferMessages[clientIp].size(); i++) {
 		std::string sendMessage = bufferMessages[clientIp][i];
-		if (send(socketfd, sendMessage.c_str(), sendMessage.size(), 0) == sendMessage.size())
-		{
-			sleep(1);
-			detailsMap[clientIp]->received++;
+		bufferMessageString += sendMessage;
+		if (i != bufferMessages[clientIp].size() - 1) {
+			bufferMessageString += "\n";
 		}
+	}
+	bufferMessageString += "]";
+
+	if (send(socketfd, bufferMessageString.c_str(), bufferMessageString.size(), 0) == bufferMessageString.size())
+	{
+		detailsMap[clientIp]->received++;
 	}
 	bufferMessages[clientIp].clear();
 }

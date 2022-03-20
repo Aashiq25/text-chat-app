@@ -1,6 +1,7 @@
 #include "../include/global.h"
 #include<vector>
 #include<map>
+#define BUFFER_SIZE 100000
 
 void trim(std::string& input_str);
 
@@ -33,5 +34,7 @@ int FetchClientMetaIndex(std::vector<ClientMetaInfo*>& availableClients, std::st
 bool IsValidIpAddress(std::string ipAddress);
 
 bool IsNumber(std::string str);
+
+bool IsValidPort(std::string port);
 
 std::vector<std::string> Split(std::string &str, char delimiter);
