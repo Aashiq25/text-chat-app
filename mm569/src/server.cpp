@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <netdb.h>
-#include<iostream>
+#include <iostream>
 #include <arpa/inet.h>
 #include <map>
 
@@ -51,7 +51,7 @@
  * @param  argv The argument list
  * @return 0 EXIT_SUCCESS
  */
-int initServer(char* port)
+int initServer(char *port)
 {
 
 	int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
@@ -137,22 +137,27 @@ int initServer(char* port)
 						printf("I got: %s", cmd);
 
 						// Process PA1 commands here ...
-						
+
 						// Get input command
 						std::string input_command(cmd);
 						trim(input_command);
 
-						if (input_command == "AUTHOR") {
+						if (input_command == "AUTHOR")
+						{
 							PrintAuthor(input_command);
-						} else if (input_command == "IP") {
+						}
+						else if (input_command == "IP")
+						{
 							PrintIpAddress(input_command);
-						} else if (input_command == "PORT") {
+						}
+						else if (input_command == "PORT")
+						{
 							PrintPortNumber(input_command, server_socket);
 						}
-						else if (input_command == "LIST") {
+						else if (input_command == "LIST")
+						{
 							PrintClientsList(connected_clients, input_command);
 						}
-
 
 						free(cmd);
 					}
@@ -166,7 +171,12 @@ int initServer(char* port)
 
 						printf("\nRemote Host connected!\n");
 						AddToConnectedList(client_addr, connected_clients);
-						
+						char *serialized_data = SerializeConnectedClients(connected_clients);
+
+						if (send(fdaccept, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
+						{
+							printf("Sent login list to client!\n");
+						}
 
 						/* Add to watched socket list */
 						FD_SET(fdaccept, &master_list);
@@ -194,23 +204,19 @@ int initServer(char* port)
 
 							std::string client_cmd(buffer);
 							trim(client_cmd);
-
-							if (client_cmd == "REFRESH") {
-								char* serialized_data = SerializeConnectedClients(connected_clients);
-								if (send(sock_index, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data)) {
+							printf("CLeint %s", client_cmd.c_str());
+							if (client_cmd == "REFRESH")
+							{
+								char *serialized_data = SerializeConnectedClients(connected_clients);
+								if (send(sock_index, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data))
+								{
 									printf("\nSent updated list to client! %d\n", strlen(serialized_data));
-								}
-							} else if (client_cmd.substr(0, 5) == "LOGIN") {
-								char* serialized_data = SerializeConnectedClients(connected_clients);
-								if (send(sock_index, serialized_data, strlen(serialized_data), 0) == strlen(serialized_data)) {
-									printf("Sent login list to client!\n");
 								}
 							}
 
 							printf("\nClient sent me: %s\n", buffer);
 							printf("ECHOing it back to the remote host ... ");
-							
-							
+
 							fflush(stdout);
 						}
 
@@ -224,14 +230,14 @@ int initServer(char* port)
 	return 0;
 }
 
-
-void AddToConnectedList(struct sockaddr_in& client_addr, std::vector<ClientMetaInfo>& connected_clients) {
+void AddToConnectedList(struct sockaddr_in &client_addr, std::vector<ClientMetaInfo> &connected_clients)
+{
 	ClientMetaInfo clientInfo;
 	char ipAddress[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &(client_addr.sin_addr), ipAddress, INET_ADDRSTRLEN);
 	clientInfo.ipAddress = ipAddress;
 	clientInfo.hostName = FetchHostName(client_addr);
-	clientInfo.isLoggedIn = true;  
+	clientInfo.isLoggedIn = true;
 	char str[100];
 	sprintf(str, "%d", ntohs(client_addr.sin_port));
 	std::string portNumberOfClient(str);

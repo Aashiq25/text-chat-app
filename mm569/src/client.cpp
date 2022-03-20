@@ -69,7 +69,7 @@ int Client::InitClient()
 	head_socket = 0;
 	while (true)
 	{
-		memcpy(&watch_list, &master_list, sizeof(master_list));\
+		memcpy(&watch_list, &master_list, sizeof(master_list));
 		cse4589_print_and_log("[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
 		/* select() system call. This will BLOCK */
@@ -118,8 +118,7 @@ int Client::InitClient()
 							std::string server_port = input_command.substr(port_seperator + 1);
 							server = ConnectToHost(server_ip, server_port);
 							FD_SET(server, &master_list);
-                            head_socket = server;
-
+							head_socket = server;
 						}
 
 						if (isLoggedIn)
@@ -147,17 +146,22 @@ int Client::InitClient()
 
 						char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 						memset(buffer, '\0', BUFFER_SIZE);
-						if (recv(server, buffer, BUFFER_SIZE, 0) > 0)
+						int recv_status;
+						if ((recv_status = recv(server, buffer, BUFFER_SIZE, 0)) > 0)
 						{
 							printf("Server responded: %s", buffer);
 							ParseAvailableClients(std::string(buffer));
-							fflush(stdout);
 						}
-						else
+						else if (recv_status == -1)
 						{
 							perror("Error occurred while receiving");
 						}
+						fflush(stdout);
 						free(buffer);
+					}
+					else
+					{
+						// P2P new connections
 					}
 				}
 			}
@@ -242,7 +246,7 @@ void Client::ParseAvailableClients(std::string msg)
 
 void Client::SendMessage(std::string msg)
 {
-	std::string cmd = msg.substr(0, 4);
+	std::string cmd(msg.substr(0, 4));
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart), message = msg.substr(ipEnd + 1);
@@ -258,7 +262,7 @@ void Client::SendMessage(std::string msg)
 		}
 	}
 
-	PrintEndCommand(!didSend, msg);
+	PrintEndCommand(!didSend, cmd);
 }
 
 bool Client::ClientExists(std::string &ipAddress)
