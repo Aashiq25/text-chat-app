@@ -253,7 +253,8 @@ int Client::InitClient()
 						FILE* fileWriter;
 						char *p2pbuffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 						memset(p2pbuffer, '\0', BUFFER_SIZE);
-						while (recv(sock_index, p2pbuffer, BUFFER_SIZE, 0) > 0)
+						int recvLen = 0;
+						while ((recvLen = recv(sock_index, p2pbuffer, BUFFER_SIZE, 0)) > 0)
 						{
 							printf("Server responded: %s\n", p2pbuffer);
 							
@@ -265,10 +266,11 @@ int Client::InitClient()
 								fileNameStart += fileStr.size();
 								fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart - 1);
 								fileWriter = fopen(fileName.c_str(), "wb");	
-								
-								fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).data());
+								if (fileDataStart < incomingStream.size()) {
+									fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).data());
+								}
 							} else {
-								fprintf(fileWriter, "%s", p2pbuffer);
+								fwrite(p2pbuffer, recvLen, 1, fileWriter);
 							}
 							bzero(p2pbuffer, BUFFER_SIZE);
 						}
@@ -513,12 +515,13 @@ void Client::SendFileToClient(std::string msg)
 	char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 	memset(buffer, '\0', BUFFER_SIZE);
 	std::string initSendMessage = "FileName:" + fileName + "\n";
-	while(fgets(buffer, BUFFER_SIZE - 100, fileReader) != NULL) {
-		initSendMessage += buffer;
-		if (send(newClientFd, initSendMessage == "" ? buffer : initSendMessage.data(), initSendMessage.size(), 0) == -1) {
+	int readBytes = 0;
+	send(newClientFd, initSendMessage.data(), initSendMessage.size(), 0);
+	// sleep(1);
+	while(readBytes = fread(buffer, BUFFER_SIZE, 1, fileReader) > 0) {
+		if (send(newClientFd, buffer, strlen(buffer), 0) == -1) {
 			perror("Error while sending file Details");
 		}
-		initSendMessage = "";
 		bzero(buffer, BUFFER_SIZE);
 	}
 	close(newClientFd);
