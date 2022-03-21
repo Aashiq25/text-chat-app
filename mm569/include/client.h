@@ -17,6 +17,8 @@ class Client {
         void LogoutClient(std::string cmd);
         void BlockClient(std::string msg, std::string cmd);
         void UnBlockClient(std::string msg, std::string cmd);
+        void SendFileToClient(std::string msg);
+        void ProcessIncomingFile(std::string incomingStream);
     private:
         std::string client_port;
         bool isLoggedIn;

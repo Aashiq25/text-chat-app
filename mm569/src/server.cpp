@@ -35,7 +35,6 @@
 #include "../include/logger.h"
 #include "../include/helpers.h"
 
-#define BACKLOG 5
 #define STDIN 0
 #define TRUE 1
 #define CMD_SIZE 100

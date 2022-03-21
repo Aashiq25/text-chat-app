@@ -2,6 +2,7 @@
 #include<vector>
 #include<map>
 #define BUFFER_SIZE 100000
+#define BACKLOG 5
 
 void trim(std::string& input_str);
 

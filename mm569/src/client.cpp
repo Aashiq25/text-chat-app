@@ -56,17 +56,44 @@ Client::Client(int argc, char **argv)
 
 int Client::InitClient()
 {
-	int head_socket, selret, sock_index;
+	int head_socket, selret, sock_index, my_socket;
 	fd_set master_list, watch_list;
+	struct addrinfo hints, *res;
+
+	/* Set up hints structure */
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	/* Fill up address structures */
+	if (getaddrinfo(NULL, client_port.c_str(), &hints, &res) != 0)
+		perror("getaddrinfo failed");
+
+	/* Socket */
+	my_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (my_socket < 0)
+		perror("Cannot create socket");
+
+	/* Bind */
+	if (bind(my_socket, res->ai_addr, res->ai_addrlen) < 0)
+		perror("Bind failed");
+
+	freeaddrinfo(res);
+
+	/* Listen */
+	if (listen(my_socket, BACKLOG) < 0)
+		perror("Unable to listen on port");
 
 	/* Zero select FD sets */
 	FD_ZERO(&master_list);
 	FD_ZERO(&watch_list);
 
+	FD_SET(my_socket, &master_list);
 	/* Register STDIN */
 	FD_SET(STDIN, &master_list);
 
-	head_socket = 0;
+	head_socket = my_socket;
 	while (true)
 	{
 		memcpy(&watch_list, &master_list, sizeof(master_list));
@@ -112,28 +139,32 @@ int Client::InitClient()
 						}
 						else if (input_command.substr(0, 5) == "LOGIN")
 						{
-							
+
 							std::size_t ip_seperator = input_command.find(" "), port_seperator;
 							port_seperator = input_command.find(" ", ip_seperator + 1);
 							std::string server_ip = input_command.substr(ip_seperator + 1, port_seperator - ip_seperator - 1);
 							std::string server_port = input_command.substr(port_seperator + 1);
 
-							if (!IsValidIpAddress(server_ip) || !IsValidPort(server_port)) {
+							if (!IsValidIpAddress(server_ip) || !IsValidPort(server_port))
+							{
 								PrintEndCommand(true, "LOGIN");
 							}
 							else if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
 							{
 								isLoggedIn = true;
-							} else {
+							}
+							else
+							{
 								server = ConnectToHost(server_ip, server_port);
-								if (server != -1) {
+								if (server != -1)
+								{
 									FD_SET(server, &master_list);
 									head_socket = server;
 								}
 							}
-
 						}
-						else if (input_command == "EXIT") {
+						else if (input_command == "EXIT")
+						{
 							LogoutClient(input_command);
 							close(server);
 							FD_CLR(server, &master_list);
@@ -152,16 +183,28 @@ int Client::InitClient()
 									printf("Refresh requested!\n");
 								}
 							}
+							else if (input_command.substr(0, 8) == "SENDFILE")
+							{
+								SendFileToClient(input_command);
+							}
 							else if (input_command.substr(0, 4) == "SEND")
 							{
 								SendMessage(input_command);
-							} else if (input_command == "LOGOUT") {
+							}
+							else if (input_command == "LOGOUT")
+							{
 								LogoutClient(input_command);
-							} else if (input_command.substr(0, 5) == "BLOCK") {
+							}
+							else if (input_command.substr(0, 5) == "BLOCK")
+							{
 								BlockClient(input_command, input_command.substr(0, 5));
-							} else if (input_command.substr(0, 7) == "UNBLOCK") {
+							}
+							else if (input_command.substr(0, 7) == "UNBLOCK")
+							{
 								UnBlockClient(input_command, input_command.substr(0, 7));
-							} else if (input_command.substr(0, 9) == "BROADCAST") {
+							}
+							else if (input_command.substr(0, 9) == "BROADCAST")
+							{
 								BroadCastMessage(input_command);
 							}
 						}
@@ -175,7 +218,7 @@ int Client::InitClient()
 						int recv_status;
 						if ((recv_status = recv(server, buffer, BUFFER_SIZE, 0)) > 0)
 						{
-							
+
 							printf("Server responded: %s\n", buffer);
 							ParseAvailableClients(std::string(buffer));
 
@@ -186,12 +229,33 @@ int Client::InitClient()
 						{
 							perror("Error occurred while receiving");
 						}
-						
+
 						free(buffer);
 					}
-					else
+					else if (my_socket == sock_index)
 					{
-						// P2P new connections
+						// Process P2P connection
+						struct sockaddr_in p2pClient;
+						int peerFd;
+						peerFd = accept(my_socket, (struct sockaddr *)&p2pClient, (socklen_t *) sizeof(p2pClient));
+						if (peerFd < 0)
+							perror("Accept failed.");
+
+						FD_SET(peerFd, &master_list);
+						if (peerFd > head_socket)
+							head_socket = peerFd;
+					} else {
+						// Process P2P file
+						char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+						memset(buffer, '\0', BUFFER_SIZE);
+						if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0)
+						{
+							close(sock_index);
+							printf("Remote Host terminated connection!\n");
+							FD_CLR(sock_index, &master_list);
+						} else {
+							ProcessIncomingFile(std::string(buffer));
+						}
 					}
 				}
 			}
@@ -253,7 +317,9 @@ void Client::ParseAvailableClients(std::string msg)
 	if (startIndex != -1)
 	{
 		startIndex += connected_str.size();
-	} else {
+	}
+	else
+	{
 		return;
 	}
 	availableClients.clear();
@@ -268,7 +334,7 @@ void Client::ParseAvailableClients(std::string msg)
 														   (strSeperator2 != -1 ? strSeperator2 - strSeperator1
 																				: availableClientsStr.size() - strSeperator1));
 
-		ClientMetaInfo* ct = new ClientMetaInfo;
+		ClientMetaInfo *ct = new ClientMetaInfo;
 		ct->stringToCMI(clientStr);
 		availableClients.push_back(ct);
 
@@ -311,7 +377,7 @@ bool Client::ClientExists(std::string ipAddress)
 {
 	for (int i = 0; i < availableClients.size(); i++)
 	{
-		ClientMetaInfo* client = availableClients[i];
+		ClientMetaInfo *client = availableClients[i];
 		if (client->ipAddress == ipAddress)
 		{
 			return true;
@@ -320,19 +386,23 @@ bool Client::ClientExists(std::string ipAddress)
 	return false;
 }
 
-void Client::PrintReceivedMessage(std::string msg) {
+void Client::PrintReceivedMessage(std::string msg)
+{
 	std::string msg_start_str = "Messages:[";
 	std::size_t startIndex = msg.find(msg_start_str);
 	if (startIndex != -1)
 	{
 		startIndex += msg_start_str.size();
-	} else {
+	}
+	else
+	{
 		return;
 	}
 	std::string messagesString = msg.substr(startIndex, msg.find("]", startIndex) - startIndex);
 	std::vector<std::string> messageList = Split(messagesString, '\n');
-	
-	for (int i = 0; i < messageList.size(); i++) {
+
+	for (int i = 0; i < messageList.size(); i++)
+	{
 		std::string incomingMsg = messageList[i];
 		std::string fromStr = "From:", messageStr = ",Message:";
 		std::size_t ipStart = incomingMsg.find(fromStr), msgStart = incomingMsg.find(messageStr);
@@ -341,35 +411,38 @@ void Client::PrintReceivedMessage(std::string msg) {
 		{
 			ipStart += fromStr.size();
 			msgStart += messageStr.size();
-		} else {
+		}
+		else
+		{
 			return;
 		}
 
 		std::size_t senderIpEnd = incomingMsg.find(",");
 
-		std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd-ipStart);
+		std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd - ipStart);
 		std::string message = incomingMsg.substr(msgStart);
 		cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
 		cse4589_print_and_log("msg from:%s\n[msg]:%s\n", senderIp.c_str(), message.c_str());
 		cse4589_print_and_log("[RECEIVED:END]\n");
 	}
-
 }
 
-void Client::LogoutClient(std::string cmd) {
+void Client::LogoutClient(std::string cmd)
+{
 	if (send(server, cmd.c_str(), cmd.size(), 0) == cmd.size())
 	{
 		isLoggedIn = false;
-		if (cmd == "EXIT") {
+		if (cmd == "EXIT")
+		{
 			server = -1;
 		}
 		cse4589_print_and_log("[%s:SUCCESS]\n", cmd.c_str());
 		cse4589_print_and_log("[%s:END]\n", cmd.c_str());
-		
 	}
 }
 
-void Client::BlockClient(std::string msg, std::string cmd) {
+void Client::BlockClient(std::string msg, std::string cmd)
+{
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string ipAddress = msg.substr(ipStart);
 	bool didInform = false;
@@ -385,7 +458,8 @@ void Client::BlockClient(std::string msg, std::string cmd) {
 	PrintEndCommand(!didInform, cmd);
 }
 
-void Client::UnBlockClient(std::string msg, std::string cmd) {
+void Client::UnBlockClient(std::string msg, std::string cmd)
+{
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::string ipAddress = msg.substr(ipStart);
 	bool didInform = false;
@@ -399,4 +473,51 @@ void Client::UnBlockClient(std::string msg, std::string cmd) {
 		}
 	}
 	PrintEndCommand(!didInform, cmd);
+}
+
+void Client::SendFileToClient(std::string msg)
+{
+	std::string cmd(msg.substr(0, 4));
+	std::size_t ipStart = msg.find(" ") + 1;
+	std::size_t ipEnd = msg.find(" ", ipStart);
+	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart), fileName = msg.substr(ipEnd + 1);
+	ClientMetaInfo* clientMeta = FetchClientMeta(availableClients, ipAddress); 
+	int newClientFd = ConnectToHost(clientMeta->ipAddress, clientMeta->portNumber);
+	FILE* fileReader;
+	fileReader = fopen(fileName.c_str(), "r");
+	if (fileReader == NULL) {
+		perror("Unable to read file");
+	}
+	int n;
+	char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+	memset(buffer, '\0', BUFFER_SIZE);
+	std::string initSendMessage = "FileName:" + fileName + "FileData:";
+	bool init = true;
+	while(fgets(buffer, BUFFER_SIZE, fileReader) != NULL) {
+		if (init && send(newClientFd, initSendMessage.c_str(), initSendMessage.size(), 0) == -1) {
+			perror("Error while sending file Details");
+		} else {
+			init = false;
+		}
+		if (send(newClientFd, buffer, sizeof(buffer), 0) == -1) {
+			perror("Error while sending file.");
+		}
+		bzero(buffer, BUFFER_SIZE);
+	}
+}
+
+void Client::ProcessIncomingFile(std::string incomingStream) {
+	std::string fileStr = "FileName:", dataStr = "FileData:";
+	std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = incomingStream.find(dataStr), fileDataEnd;
+
+	if (fileNameStart != -1 && fileDataStart != -1)
+	{
+		fileNameStart += fileStr.size();
+		fileDataEnd = fileDataStart + dataStr.size();
+	}
+	std::string fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart);
+
+	FILE* fileWriter;
+	fileWriter = fopen(fileName.c_str(), "w");
+	fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart));
 }
