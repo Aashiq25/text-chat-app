@@ -60,6 +60,8 @@ int Client::InitClient()
 	fd_set master_list, watch_list;
 	struct addrinfo hints, *res;
 
+	std::string fileName;
+
 	/* Set up hints structure */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -248,16 +250,34 @@ int Client::InitClient()
 							head_socket = peerFd;
 					} else {
 						// Process P2P file
-						char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
-						memset(buffer, '\0', BUFFER_SIZE);
-						if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0)
+						char *p2pbuffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+						memset(p2pbuffer, '\0', BUFFER_SIZE);
+						if (recv(sock_index, p2pbuffer, BUFFER_SIZE, 0) <= 0)
 						{
 							close(sock_index);
 							printf("Remote Host terminated connection!\n");
 							FD_CLR(sock_index, &master_list);
 						} else {
-							ProcessIncomingFile(std::string(buffer));
+							printf("Server responded: %s\n", p2pbuffer);
+							std::string incomingStream = p2pbuffer;
+							std::string fileStr = "FileName:", dataSepStart = "\n";
+							std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = incomingStream.find(dataSepStart);
+							if (fileNameStart != -1) {
+								fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart);
+							}
+							if (fileDataStart == -1) {
+								fileDataStart = 0;
+							} else {
+								fileDataStart += 1;
+							}
+
+							FILE* fileWriter;
+							fileWriter = fopen(fileName.c_str(), "w");
+							if (fileDataStart < incomingStream.size()) {
+								fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).c_str());
+							}
 						}
+						free(p2pbuffer);
 					}
 				}
 			}
@@ -490,36 +510,20 @@ void Client::SendFileToClient(std::string msg)
 	if (fileReader == NULL) {
 		perror("Unable to read file");
 	}
-	int n;
 	char *buffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 	memset(buffer, '\0', BUFFER_SIZE);
-	std::string initSendMessage = "FileName:" + fileName + "FileData:";
-	bool init = true;
-	while(fgets(buffer, BUFFER_SIZE, fileReader) != NULL) {
-		if (init && send(newClientFd, initSendMessage.c_str(), initSendMessage.size(), 0) == -1) {
+	std::string initSendMessage = "FileName:" + fileName + "\n";
+	while(fgets(buffer, BUFFER_SIZE - 100, fileReader) != NULL) {
+		initSendMessage += buffer;
+		if (send(newClientFd, initSendMessage.c_str(), initSendMessage.size(), 0) == -1) {
 			perror("Error while sending file Details");
-		} else {
-			init = false;
 		}
-		if (send(newClientFd, buffer, sizeof(buffer), 0) == -1) {
-			perror("Error while sending file.");
-		}
+		initSendMessage = "";
 		bzero(buffer, BUFFER_SIZE);
 	}
 }
 
 void Client::ProcessIncomingFile(std::string incomingStream) {
-	std::string fileStr = "FileName:", dataStr = "FileData:";
-	std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = incomingStream.find(dataStr), fileDataEnd;
-
-	if (fileNameStart != -1 && fileDataStart != -1)
-	{
-		fileNameStart += fileStr.size();
-		fileDataEnd = fileDataStart + dataStr.size();
-	}
-	std::string fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart);
-
-	FILE* fileWriter;
-	fileWriter = fopen(fileName.c_str(), "w");
-	fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).c_str());
+	printf("Reached here");
+	
 }
