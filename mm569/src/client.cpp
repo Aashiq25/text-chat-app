@@ -261,20 +261,18 @@ int Client::InitClient()
 							printf("Server responded: %s\n", p2pbuffer);
 							std::string incomingStream = p2pbuffer;
 							std::string fileStr = "FileName:", dataSepStart = "\n";
-							std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = incomingStream.find(dataSepStart);
+							std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = 0;
 							if (fileNameStart != -1) {
+								fileDataStart = incomingStream.find(dataSepStart) + 1;
 								fileNameStart += fileStr.size();
-								fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart);
-							}
-							if (fileDataStart == -1) {
-								fileDataStart = 0;
-							} else {
-								fileDataStart += 1;
+								fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart - 1);
+								
 							}
 
 							FILE* fileWriter;
 							fileWriter = fopen(fileName.c_str(), "a");
 							if (fileDataStart < incomingStream.size()) {
+								printf("Amwriting:%s", incomingStream.substr(fileDataStart).c_str());
 								fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).c_str());
 							}
 							fclose(fileWriter);
@@ -523,9 +521,5 @@ void Client::SendFileToClient(std::string msg)
 		initSendMessage = "";
 		bzero(buffer, BUFFER_SIZE);
 	}
-}
-
-void Client::ProcessIncomingFile(std::string incomingStream) {
-	printf("Reached here");
-	
+	close(newClientFd);
 }
