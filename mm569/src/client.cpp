@@ -286,8 +286,8 @@ int Client::ConnectToHost(std::string server_ip, std::string server_port)
 	if (fdsocket < 0)
 		perror("Failed to create socket");
 
-	if (bind(fdsocket, client_addr->ai_addr, client_addr->ai_addrlen) < 0)
-		perror("Bind failed");
+	// if (bind(fdsocket, client_addr->ai_addr, client_addr->ai_addrlen) < 0)
+	// 	perror("Bind failed");
 
 	if (connect(fdsocket, server_addr->ai_addr, server_addr->ai_addrlen) < 0)
 		perror("Connect failed");

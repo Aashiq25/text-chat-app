@@ -299,8 +299,7 @@ void Server::SendMessageToClient(std::string msg, int fromSocket)
 	if (blockInfo.find(receiverIpAddress) != blockInfo.end()) {
 		senderInMap = FetchClientMetaIndex(blockInfo[receiverIpAddress], senderIp);
 		if (senderInMap != -1) {
-			// Blocked IP 
-			// TODO check if we have to increment sent count
+			// Blocked IP
 			return;
 		}
 	}
