@@ -263,6 +263,7 @@ int Client::InitClient()
 							std::string fileStr = "FileName:", dataSepStart = "\n";
 							std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = incomingStream.find(dataSepStart);
 							if (fileNameStart != -1) {
+								fileNameStart += fileStr.size();
 								fileName = incomingStream.substr(fileNameStart, fileDataStart - fileNameStart);
 							}
 							if (fileDataStart == -1) {
@@ -272,10 +273,11 @@ int Client::InitClient()
 							}
 
 							FILE* fileWriter;
-							fileWriter = fopen(fileName.c_str(), "w");
+							fileWriter = fopen(fileName.c_str(), "a");
 							if (fileDataStart < incomingStream.size()) {
 								fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).c_str());
 							}
+							fclose(fileWriter);
 						}
 						free(p2pbuffer);
 					}
