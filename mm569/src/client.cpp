@@ -519,5 +519,5 @@ void Client::ProcessIncomingFile(std::string incomingStream) {
 
 	FILE* fileWriter;
 	fileWriter = fopen(fileName.c_str(), "w");
-	fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart));
+	fprintf(fileWriter, "%s", incomingStream.substr(fileDataStart).c_str());
 }
