@@ -237,7 +237,9 @@ int Client::InitClient()
 						// Process P2P connection
 						struct sockaddr_in p2pClient;
 						int peerFd;
-						peerFd = accept(my_socket, (struct sockaddr *)&p2pClient, (socklen_t *) sizeof(p2pClient));
+						int addrlen;
+						addrlen = sizeof(p2pClient);
+						peerFd = accept(my_socket, (struct sockaddr *)&p2pClient, (socklen_t *) &addrlen);
 						if (peerFd < 0)
 							perror("Accept failed.");
 
