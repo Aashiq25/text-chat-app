@@ -67,7 +67,7 @@ int Client::InitClient()
 	hints.ai_flags = AI_PASSIVE;
 
 	/* Fill up address structures */
-	if (getaddrinfo(NULL, client_port.c_str(), &hints, &res) != 0)
+	if (getaddrinfo(NULL, "7272", &hints, &res) != 0)
 		perror("getaddrinfo failed");
 
 	/* Socket */
@@ -279,15 +279,15 @@ int Client::ConnectToHost(std::string server_ip, std::string server_port)
 
 	// Fill Client Address
 	std::string clientIp = FetchMyIp();
-	if (getaddrinfo(clientIp.c_str(), client_port.c_str(), &hints, &client_addr) != 0)
+	if (getaddrinfo(clientIp.c_str(), server_port == "7272" ? NULL : client_port.c_str(), &hints, &client_addr) != 0)
 		perror("getaddrinfo failed");
 	// Create a socket for client
 	fdsocket = socket(client_addr->ai_family, client_addr->ai_socktype, client_addr->ai_protocol);
 	if (fdsocket < 0)
 		perror("Failed to create socket");
 
-	// if (bind(fdsocket, client_addr->ai_addr, client_addr->ai_addrlen) < 0)
-	// 	perror("Bind failed");
+	if (bind(fdsocket, client_addr->ai_addr, client_addr->ai_addrlen) < 0)
+		perror("Bind failed");
 
 	if (connect(fdsocket, server_addr->ai_addr, server_addr->ai_addrlen) < 0)
 		perror("Connect failed");
@@ -482,7 +482,7 @@ void Client::SendFileToClient(std::string msg)
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart), fileName = msg.substr(ipEnd + 1);
 	ClientMetaInfo* clientMeta = FetchClientMeta(availableClients, ipAddress); 
-	int newClientFd = ConnectToHost(clientMeta->ipAddress, clientMeta->portNumber);
+	int newClientFd = ConnectToHost(clientMeta->ipAddress, "7272");
 	FILE* fileReader;
 	fileReader = fopen(fileName.c_str(), "r");
 	if (fileReader == NULL) {
