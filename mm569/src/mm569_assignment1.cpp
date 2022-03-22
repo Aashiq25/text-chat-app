@@ -20,7 +20,6 @@
  *
  * This contains the main function. Add further description here....
  */
-#include <iostream>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,7 +27,6 @@
 #include "../include/logger.h"
 #include "../include/server.h"
 #include "../include/client.h"
-
 
 using namespace std;
 
@@ -49,12 +47,14 @@ int main(int argc, char **argv)
 
 	/*Start Here*/
 
-
-	if (strcmp(argv[1], "s") == 0) {
-		Server* serverInstance = new Server();
+	if (strcmp(argv[1], "s") == 0)
+	{
+		Server *serverInstance = new Server();
 		serverInstance->InitServer(argv[2]);
-	} else if (strcmp(argv[1], "c") == 0) {
-		Client* clientInstance = new Client(argc, argv);
+	}
+	else if (strcmp(argv[1], "c") == 0)
+	{
+		Client *clientInstance = new Client(argc, argv);
 		clientInstance->InitClient();
 	}
 

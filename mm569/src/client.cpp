@@ -1,6 +1,6 @@
 /**
  * @client
- * @author  Swetank Kumar Saha <swetankk@buffalo.edu>, Shivang Aggarwal <shivanga@buffalo.edu>
+ * @author  Muhamed Aashiq <mm569@buffalo.edu>
  * @version 1.0
  *
  * @section LICENSE
@@ -28,7 +28,6 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <netdb.h>
-#include <iostream>
 #include <unistd.h>
 
 #include "../include/client.h"
@@ -36,7 +35,7 @@
 #include "../include/helpers.h"
 
 #define TRUE 1
-#define MSG_SIZE 256
+#define MSG_SIZE 500
 #define STDIN 0
 
 /**
@@ -51,6 +50,7 @@ Client::Client(int argc, char **argv)
 {
 	client_port = std::string(argv[2]);
 	isLoggedIn = false;
+	isReconnect = false;
 	server = -1;
 }
 
@@ -100,7 +100,6 @@ int Client::InitClient()
 	while (true)
 	{
 		memcpy(&watch_list, &master_list, sizeof(master_list));
-		cse4589_print_and_log("[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
 
 		selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
@@ -123,8 +122,6 @@ int Client::InitClient()
 						memset(msg, '\0', MSG_SIZE);
 						if (fgets(msg, MSG_SIZE - 1, stdin) == NULL) // Mind the newline character that will be written to msg
 							exit(-1);
-
-						printf("I got: %s(size:%lu chars)\n", msg, strlen(msg));
 
 						std::string input_command(msg);
 						trim(input_command);
@@ -155,6 +152,7 @@ int Client::InitClient()
 							else if (server != -1 && send(server, input_command.c_str(), input_command.size(), 0) == input_command.size())
 							{
 								isLoggedIn = true;
+								isReconnect = true;
 							}
 							else
 							{
@@ -164,6 +162,8 @@ int Client::InitClient()
 									FD_SET(server, &master_list);
 									head_socket = server;
 								}
+								cse4589_print_and_log("[%s:SUCCESS]\n", input_command.substr(0, 5).c_str());
+								PrintEndCommand(false, input_command.substr(0, 5));
 							}
 						}
 						else if (input_command == "EXIT")
@@ -181,10 +181,7 @@ int Client::InitClient()
 							}
 							else if (input_command == "REFRESH")
 							{
-								if (send(server, msg, strlen(msg), 0) == strlen(msg))
-								{
-									printf("Refresh requested!\n");
-								}
+								send(server, msg, strlen(msg), 0) == strlen(msg);
 							}
 							else if (input_command.substr(0, 8) == "SENDFILE")
 							{
@@ -222,11 +219,17 @@ int Client::InitClient()
 						if ((recv_status = recv(server, buffer, BUFFER_SIZE, 0)) > 0)
 						{
 
-							printf("Server responded: %s\n", buffer);
 							ParseAvailableClients(std::string(buffer));
 
 							PrintReceivedMessage(std::string(buffer));
-							fflush(stdout);
+							if (isReconnect)
+							{
+								std::string cmd_login = "LOGIN";
+								cse4589_print_and_log("[%s:SUCCESS]\n", cmd_login.c_str());
+								fflush(stdout);
+								PrintEndCommand(false, "LOGIN");
+								isReconnect = false;
+							}
 						}
 						else if (recv_status == -1)
 						{
@@ -242,28 +245,30 @@ int Client::InitClient()
 						int peerFd;
 						int addrlen;
 						addrlen = sizeof(p2pClient);
-						peerFd = accept(my_socket, (struct sockaddr *)&p2pClient, (socklen_t *) &addrlen);
+						peerFd = accept(my_socket, (struct sockaddr *)&p2pClient, (socklen_t *)&addrlen);
 						if (peerFd < 0)
 							perror("Accept failed.");
 
 						FD_SET(peerFd, &master_list);
 						if (peerFd > head_socket)
 							head_socket = peerFd;
-					} else {
+					}
+					else
+					{
 						// Process P2P file
-						FILE* fileWriter;
+						FILE *fileWriter;
 						char *p2pbuffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
 						memset(p2pbuffer, '\0', BUFFER_SIZE);
 						long recvLen = 0;
 						long left = 0;
 						while ((recvLen = recv(sock_index, p2pbuffer, BUFFER_SIZE, 0)) > 0)
 						{
-							printf("Server responded: %lu\n", recvLen);
-							
+
 							std::string incomingStream = p2pbuffer;
 							std::string fileStr = "FileName:", fieldSepStr = ",", dataSepStart = "\n", fileSizeStr = "FileSize:";
 							std::size_t fileNameStart = incomingStream.find(fileStr), fileDataStart = 0, fileSizeStart = incomingStream.find(fileSizeStr), fieldSepStart;
-							if (fileNameStart != -1) {
+							if (fileNameStart != -1)
+							{
 								fileDataStart = incomingStream.find(dataSepStart) + 1;
 								fieldSepStart = incomingStream.find(fieldSepStr);
 								fileNameStart += fileStr.size();
@@ -272,16 +277,17 @@ int Client::InitClient()
 								std::string fileSizeAsString;
 								fileSizeStart += fileSizeStr.size();
 								fileSizeAsString = incomingStream.substr(fileSizeStart, fileDataStart - fileSizeStart - 1);
-        						fileSize = atol(fileSizeAsString.c_str());
+								fileSize = atol(fileSizeAsString.c_str());
 
-								fileWriter = fopen(fileName.c_str(), "wb");	
+								fileWriter = fopen(fileName.c_str(), "wb");
 								left = fileSize;
-
-							} else {
-								if (left > 0) {
+							}
+							else
+							{
+								if (left > 0)
+								{
 									fwrite(p2pbuffer, 1, left < recvLen ? left : recvLen, fileWriter);
 									left -= recvLen;
-									// wrote += recvLen;
 								}
 							}
 							bzero(p2pbuffer, BUFFER_SIZE);
@@ -289,9 +295,7 @@ int Client::InitClient()
 						free(p2pbuffer);
 						fclose(fileWriter);
 						close(sock_index);
-						printf("Remote Host terminated connection!\n");
 						FD_CLR(sock_index, &master_list);
-							 
 					}
 				}
 			}
@@ -457,9 +461,9 @@ void Client::PrintReceivedMessage(std::string msg)
 
 		std::string senderIp = incomingMsg.substr(ipStart, senderIpEnd - ipStart);
 		std::string message = incomingMsg.substr(msgStart);
-		cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
-		cse4589_print_and_log("msg from:%s\n[msg]:%s\n", senderIp.c_str(), message.c_str());
-		cse4589_print_and_log("[RECEIVED:END]\n");
+		fflush(stdout);
+		cse4589_print_and_log("[RECEIVED:SUCCESS]\nmsg from:%s\n[msg]:%s\n[RECEIVED:END]\n", senderIp.data(), message.data());
+		fflush(stdout);
 	}
 }
 
@@ -517,16 +521,17 @@ void Client::SendFileToClient(std::string msg)
 	std::size_t ipStart = msg.find(" ") + 1;
 	std::size_t ipEnd = msg.find(" ", ipStart);
 	std::string ipAddress = msg.substr(ipStart, ipEnd - ipStart), fileName = msg.substr(ipEnd + 1);
-	ClientMetaInfo* clientMeta = FetchClientMeta(availableClients, ipAddress); 
+	ClientMetaInfo *clientMeta = FetchClientMeta(availableClients, ipAddress);
 	int newClientFd = ConnectToHost(clientMeta->ipAddress, "7272");
-	FILE* fileReader;
+	FILE *fileReader;
 	fileReader = fopen(fileName.c_str(), "rb");
-	if (fileReader == NULL) {
+	if (fileReader == NULL)
+	{
 		perror("Unable to read file");
 	}
 	fseek(fileReader, 0, SEEK_END);
 	long fileSize = ftell(fileReader);
-    rewind(fileReader);
+	rewind(fileReader);
 	char *buffer = (char *)malloc(sizeof(char) * fileSize);
 	memset(buffer, '\0', fileSize);
 	char fileSizeStr[256];
@@ -535,12 +540,13 @@ void Client::SendFileToClient(std::string msg)
 	int readBytes = 0;
 	send(newClientFd, initSendMessage.data(), initSendMessage.size(), 0);
 
-	fread(buffer, sizeof(char), fileSize, fileReader); 
+	fread(buffer, sizeof(char), fileSize, fileReader);
 	int sent = 0;
 	while (sent < fileSize)
 	{
 		int bytesSent = send(newClientFd, buffer + sent, fileSize - bytesSent, 0);
-		if (bytesSent == -1) {
+		if (bytesSent == -1)
+		{
 			perror("Error while sending file Details");
 			break;
 		}

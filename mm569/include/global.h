@@ -3,7 +3,7 @@
 
 #define HOSTNAME_LEN 128
 #define PATH_LEN 256
-#include<string>
+#include <string>
 
 struct ClientMetaInfo
 {
@@ -24,22 +24,32 @@ struct ClientMetaInfo
             strSeperator2 = metaStr.find(",", strSeperator1);
             std::string fieldWithValue = metaStr.substr(strSeperator1,
                                                         (strSeperator2 != -1 ? strSeperator2 - strSeperator1
-                                                        : metaStr.size() - strSeperator1));
+                                                                             : metaStr.size() - strSeperator1));
 
             std::size_t valueSeperator = fieldWithValue.find(":");
             std::string fieldName = fieldWithValue.substr(0, valueSeperator);
             std::string value = fieldWithValue.substr(valueSeperator + 1);
 
-            if (fieldName == "ipAddress") {
+            if (fieldName == "ipAddress")
+            {
                 ipAddress = value;
-            } else if (fieldName == "hostName") {
+            }
+            else if (fieldName == "hostName")
+            {
                 hostName = value;
-            } else if (fieldName == "portNumber") {
+            }
+            else if (fieldName == "portNumber")
+            {
                 portNumber = value;
-            } else if (fieldName == "isLoggedIn") {
-                if (value == "1") {
+            }
+            else if (fieldName == "isLoggedIn")
+            {
+                if (value == "1")
+                {
                     isLoggedIn = true;
-                } else {
+                }
+                else
+                {
                     isLoggedIn = false;
                 }
             }
@@ -48,7 +58,8 @@ struct ClientMetaInfo
     }
 };
 
-struct ServerStatistics {
+struct ServerStatistics
+{
     int received, sent, socket;
 };
 
