@@ -23,6 +23,6 @@ private:
     std::vector<ClientMetaInfo *> connected_clients;
     std::map<std::string, ServerStatistics *> detailsMap;
     std::map<int, std::string> fdVsIP;
-    std::map<std::string, std::vector<ClientMetaInfo *>> blockInfo;
-    std::map<std::string, std::vector<std::string>> bufferMessages;
+    std::map<std::string, std::vector<ClientMetaInfo *> > blockInfo;
+    std::map<std::string, std::vector<std::string> > bufferMessages;
 };
